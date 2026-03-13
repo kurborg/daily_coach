@@ -38,6 +38,7 @@ class HealthData:
     fat_g: Optional[float] = None
     calories_consumed: Optional[float] = None
     walking_running_distance_km: Optional[float] = None
+    cycling_distance_km: Optional[float] = None
     body_fat_pct: Optional[float] = None
 
     @property
@@ -52,6 +53,20 @@ class HealthData:
             return self.active_calories + self.bmr_calories
         return None
 
+    @property
+    def derived_activities(self) -> list:
+        """
+        Build activity entries from distance metrics when no workouts array exists.
+        Health Auto Export daily JSON exports don't include a workouts array —
+        activity is inferred from cycling_distance and walking_running_distance.
+        """
+        activities = []
+        if self.cycling_distance_km and self.cycling_distance_km > 0.1:
+            activities.append({"name": "Cycling", "distance_km": self.cycling_distance_km})
+        if self.walking_running_distance_km and self.walking_running_distance_km > 0.1:
+            activities.append({"name": "Walk/Run", "distance_km": self.walking_running_distance_km})
+        return activities
+
     @classmethod
     def parse(cls, raw_json: dict) -> "HealthData":
         data = raw_json.get("data", raw_json)
@@ -59,7 +74,7 @@ class HealthData:
         workouts = data.get("workouts", [])
 
         def latest(metric_name: str) -> Optional[float]:
-            """Return the qty from the most recent entry for a metric."""
+            """Return the qty from the most recent single-value entry (e.g. weight, HR)."""
             m = metrics.get(metric_name)
             if not m or not m.get("data"):
                 return None
@@ -68,7 +83,12 @@ class HealthData:
             return float(val) if val is not None else None
 
         def latest_day_sum(metric_name: str) -> Optional[float]:
-            """Sum all entries for the most recent date (handles duplicate sources)."""
+            """
+            Sum all entries for the most recent date.
+            Required for minute-level metrics (steps, calories, distance) where
+            each entry is a single minute's value, not a daily total.
+            Also deduplicates nutrition data from multiple sources (e.g. MyFitnessPal).
+            """
             m = metrics.get(metric_name)
             if not m or not m.get("data"):
                 return None
@@ -79,8 +99,6 @@ class HealthData:
             return round(sum(vals), 1) if vals else None
 
         # ── Sleep ─────────────────────────────────────────────────────────────
-        # Health Auto Export exports sleep as one entry per night with fields:
-        # totalSleep, deep, rem, core, awake (all in hours), sleepStart, sleepEnd
         sleep_hours = None
         sleep_deep_minutes = None
         sleep_rem_minutes = None
@@ -111,12 +129,8 @@ class HealthData:
             sleep_bedtime = s.get("sleepStart") or s.get("inBedStart")
             sleep_wake_time = s.get("sleepEnd") or s.get("inBedEnd")
 
-        # ── Workouts ──────────────────────────────────────────────────────────
-        # duration: seconds → divide by 60 for minutes
-        # activeEnergyBurned: dict {"qty": N, "units": "kcal"} — the total
-        # distance: dict {"qty": N, "units": "km"}
+        # ── Workouts (from workouts array if present) ──────────────────────────
         def _qty(val) -> float:
-            """Extract numeric qty from plain number, {"qty": N} dict, or sum a list."""
             if val is None:
                 return 0.0
             if isinstance(val, list):
@@ -129,21 +143,15 @@ class HealthData:
         for w in workouts:
             duration_sec = _qty(w.get("duration"))
             duration_min = round(duration_sec / 60, 1)
-
-            # Prefer the top-level total over the segment array
             energy = _qty(w.get("activeEnergyBurned") or w.get("activeEnergy"))
-
             dist_raw = w.get("distance")
             dist_km = _qty(dist_raw)
-            # Convert miles to km if units say "mi"
             if isinstance(dist_raw, dict) and dist_raw.get("units") == "mi":
                 dist_km = round(dist_km * MILES_TO_KM, 2)
-
             avg_hr = _qty(
                 w.get("avgHeartRate")
                 or (w.get("heartRate") or {}).get("avg")
             ) or None
-
             parsed_workouts.append({
                 "name": w.get("name", "Unknown"),
                 "duration_min": duration_min,
@@ -153,15 +161,17 @@ class HealthData:
                 "start": w.get("start", ""),
             })
 
-        # ── Walking/running distance ──────────────────────────────────────────
-        # Metric units are "mi" — convert to km
-        dist_mi = latest("walking_running_distance")
-        dist_km = round(dist_mi * MILES_TO_KM, 2) if dist_mi is not None else None
+        # ── Distances (minute-level → sum the day) ─────────────────────────────
+        walk_mi = latest_day_sum("walking_running_distance")
+        walk_km = round(walk_mi * MILES_TO_KM, 2) if walk_mi is not None else None
+
+        cycle_mi = latest_day_sum("cycling_distance")
+        cycle_km = round(cycle_mi * MILES_TO_KM, 2) if cycle_mi is not None else None
 
         return cls(
-            steps=latest("step_count"),
-            active_calories=latest("active_energy"),
-            bmr_calories=latest("basal_energy_burned"),
+            steps=latest_day_sum("step_count"),
+            active_calories=latest_day_sum("active_energy"),
+            bmr_calories=latest_day_sum("basal_energy_burned"),
             resting_hr=latest("resting_heart_rate"),
             hrv=latest("heart_rate_variability_sdnn"),
             weight_kg=_weight_as_kg(metrics.get("weight_body_mass")),
@@ -177,7 +187,8 @@ class HealthData:
             carbs_g=latest_day_sum("carbohydrates"),
             fat_g=latest_day_sum("total_fat"),
             calories_consumed=latest_day_sum("dietary_energy"),
-            walking_running_distance_km=dist_km,
+            walking_running_distance_km=walk_km,
+            cycling_distance_km=cycle_km,
         )
 
     def to_summary_dict(self) -> dict:
@@ -198,11 +209,13 @@ class HealthData:
             "sleep_bedtime": self.sleep_bedtime,
             "sleep_wake_time": self.sleep_wake_time,
             "workouts": self.workouts,
+            "derived_activities": self.derived_activities,
             "protein_g": self.protein_g,
             "carbs_g": self.carbs_g,
             "fat_g": self.fat_g,
             "calories_consumed": self.calories_consumed,
             "walking_running_distance_km": self.walking_running_distance_km,
+            "cycling_distance_km": self.cycling_distance_km,
         }
 
     def to_coaching_string(self) -> str:
@@ -213,20 +226,26 @@ class HealthData:
                 return f"  {label}: {val:.{decimals}f}{unit}"
             return f"  {label}: {int(val)}{unit}"
 
-        workout_str = ""
-        if self.workouts:
-            for w in self.workouts:
-                workout_str += f"\n    - {w['name']}: {w['duration_min']:.0f} min"
-                if w.get("distance_km"):
-                    workout_str += f", {w['distance_km']:.1f} km"
-                if w.get("active_energy"):
-                    workout_str += f", {w['active_energy']:.0f} kcal"
-                if w.get("avg_hr"):
-                    workout_str += f", avg HR {w['avg_hr']:.0f} bpm"
+        # Workouts: prefer explicit workout objects, fall back to derived activities
+        activity_str = ""
+        activities = self.workouts if self.workouts else self.derived_activities
+        if activities:
+            for a in activities:
+                if "duration_min" in a:
+                    # Full workout object
+                    activity_str += f"\n    - {a['name']}: {a['duration_min']:.0f} min"
+                    if a.get("distance_km"):
+                        activity_str += f", {a['distance_km']:.1f} km"
+                    if a.get("active_energy"):
+                        activity_str += f", {a['active_energy']:.0f} kcal"
+                    if a.get("avg_hr"):
+                        activity_str += f", avg HR {a['avg_hr']:.0f} bpm"
+                else:
+                    # Derived from distance metric
+                    activity_str += f"\n    - {a['name']}: {a['distance_km']:.1f} km"
         else:
-            workout_str = "\n    - No workouts logged"
+            activity_str = "\n    - No activity logged"
 
-        # Format sleep bedtime/wake nicely
         def fmt_time(ts: Optional[str]) -> str:
             if not ts:
                 return "Not logged"
@@ -246,9 +265,10 @@ Activity:
 {fmt('Active Calories', self.active_calories, ' kcal')}
 {fmt('BMR', self.bmr_calories, ' kcal')}
 {fmt('TDEE (est)', self.tdee, ' kcal')}
-{fmt('Walking/Running Distance', self.walking_running_distance_km, ' km', 2)}
+{fmt('Walk/Run Distance', self.walking_running_distance_km, ' km', 2)}
+{fmt('Cycling Distance', self.cycling_distance_km, ' km', 2)}
 
-Workouts:{workout_str}
+Workouts/Activity:{activity_str}
 
 Heart:
 {fmt('Resting HR', self.resting_hr, ' bpm')}

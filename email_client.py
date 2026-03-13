@@ -399,7 +399,7 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) 
           <tr>
             {_metric_card("🧠", "HRV",        m.get("hrv"),                            " ms",  t["hrv_min"],         higher_is_better=True,  decimals=1)}
             <td width="4%"></td>
-            {_metric_card("🏃", "Distance",   m.get("walking_running_distance_km"),    " km",  t["distance_km"],     higher_is_better=True,  decimals=1)}
+            {_metric_card("🚴", "Cycling",    m.get("cycling_distance_km"),            " km",  t["distance_km"],     higher_is_better=True,  decimals=1)}
           </tr>
         </table>
       </td>
