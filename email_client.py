@@ -1,11 +1,9 @@
 import os
 import random
-from datetime import date
+from datetime import date, datetime
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
-
-SPARTAN_DATE = date(2026, 5, 9)
-TRIATHLON_DATE = date(2026, 8, 15)
+from config_loader import get_config, get_targets, get_events
 
 # ── Color Palette ─────────────────────────────────────────────────────────────
 BG      = "#0d0d1a"
@@ -225,18 +223,58 @@ def _format_brief_html(coaching_brief_text: str) -> str:
 
 
 def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) -> str:
-    days_to_spartan = _days_until(SPARTAN_DATE)
-    days_to_triathlon = _days_until(TRIATHLON_DATE)
+    cfg = get_config()
+    t = get_targets()
+    events = get_events()
+    name = cfg["profile"]["name"]
 
     quote_text, quote_author = _daily_pick(MOTIVATIONAL_QUOTES)
     verse_text, verse_ref = _daily_pick(BIBLE_VERSES)
 
     m = metrics_summary
 
-    # Determine if training day for calorie target
+    # Training day vs rest day calorie target
     worked_out = bool(m.get("workouts"))
-    cal_target = 2600 if worked_out else 2200
+    cal_target = t["calories_training_day"] if worked_out else t["calories_rest_day"]
     cal_label = "Cal Consumed" + (" 🏋️" if worked_out else " 🛌")
+
+    # Build race countdown cards from config
+    event_cards = []
+    card_colors = [ACCENT, GREEN, GOLD]
+    col_pct = max(20, 96 // max(len(events), 1))
+    for i, e in enumerate(events):
+        color = card_colors[i % len(card_colors)]
+        if e["date"]:
+            d = datetime.strptime(e["date"], "%Y-%m-%d").date()
+            days = _days_until(d)
+            count_html = f'<div style="font-size:28px;font-weight:800;color:{color};">{days}</div><div style="font-size:10px;color:{MUTED};margin-top:3px;">days</div>'
+            date_html = f'<div style="font-size:10px;color:{MUTED};">{e["date"]}</div>'
+        else:
+            count_html = f'<div style="font-size:28px;font-weight:800;color:{color};">∞</div><div style="font-size:10px;color:{MUTED};margin-top:3px;">&nbsp;</div>'
+            date_html = f'<div style="font-size:10px;color:{MUTED};">ongoing</div>'
+        event_cards.append(
+            f'<td width="{col_pct}%" align="center" '
+            f'style="background:{CARD2};border-radius:10px;padding:14px 8px;border:1px solid {BORDER};">'
+            f'{count_html}'
+            f'<div style="font-size:12px;color:{TEXT};font-weight:600;margin-top:6px;">{e["emoji"]} {e["short"]}</div>'
+            f'{date_html}'
+            f'</td>'
+        )
+    # interleave spacer tds
+    spacer = f'<td width="2%"></td>'
+    event_row = spacer.join(event_cards)
+
+    # First event for header countdown
+    first_event = next((e for e in events if e["date"]), None)
+    if first_event:
+        first_d = datetime.strptime(first_event["date"], "%Y-%m-%d").date()
+        header_countdown = f'''<div style="text-align:right;">
+                <div style="font-size:11px;color:{MUTED};letter-spacing:1px;margin-bottom:4px;">{first_event["short"].upper()}</div>
+                <div style="font-size:24px;font-weight:800;color:{ACCENT};">{_days_until(first_d)}</div>
+                <div style="font-size:10px;color:{MUTED};">days away</div>
+              </div>'''
+    else:
+        header_countdown = ""
 
     brief_html = _format_brief_html(coaching_brief_text)
 
@@ -264,16 +302,12 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) 
                 Daily Coaching Brief
               </div>
               <div style="font-size:28px;font-weight:800;color:{WHITE};line-height:1.2;">
-                💪 Kurt's Brief
+                💪 {name}'s Brief
               </div>
               <div style="font-size:13px;color:{MUTED};margin-top:6px;">{date_str}</div>
             </td>
             <td align="right" style="vertical-align:top;">
-              <div style="text-align:right;">
-                <div style="font-size:11px;color:{MUTED};letter-spacing:1px;margin-bottom:4px;">SPARTAN</div>
-                <div style="font-size:24px;font-weight:800;color:{ACCENT};">{days_to_spartan}</div>
-                <div style="font-size:10px;color:{MUTED};">days away</div>
-              </div>
+              {header_countdown}
             </td>
           </tr>
         </table>
@@ -328,31 +362,7 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) 
           🏁 &nbsp;Race Countdowns
         </div>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            <td width="32%" align="center"
-                style="background:{CARD2};border-radius:10px;padding:14px 8px;border:1px solid {BORDER};">
-              <div style="font-size:28px;font-weight:800;color:{ACCENT};">{days_to_spartan}</div>
-              <div style="font-size:10px;color:{MUTED};margin-top:3px;">days</div>
-              <div style="font-size:12px;color:{TEXT};font-weight:600;margin-top:6px;">🏟️ Spartan</div>
-              <div style="font-size:10px;color:{MUTED};">May 9, 2026</div>
-            </td>
-            <td width="4%"></td>
-            <td width="32%" align="center"
-                style="background:{CARD2};border-radius:10px;padding:14px 8px;border:1px solid {BORDER};">
-              <div style="font-size:28px;font-weight:800;color:{GREEN};">{days_to_triathlon}</div>
-              <div style="font-size:10px;color:{MUTED};margin-top:3px;">days</div>
-              <div style="font-size:12px;color:{TEXT};font-weight:600;margin-top:6px;">🏊 Triathlon</div>
-              <div style="font-size:10px;color:{MUTED};">Aug 15, 2026</div>
-            </td>
-            <td width="4%"></td>
-            <td width="32%" align="center"
-                style="background:{CARD2};border-radius:10px;padding:14px 8px;border:1px solid {BORDER};">
-              <div style="font-size:28px;font-weight:800;color:{GOLD};">∞</div>
-              <div style="font-size:10px;color:{MUTED};margin-top:3px;">&nbsp;</div>
-              <div style="font-size:12px;color:{TEXT};font-weight:600;margin-top:6px;">⚡ Hyrox</div>
-              <div style="font-size:10px;color:{MUTED};">ongoing</div>
-            </td>
-          </tr>
+          <tr>{event_row}</tr>
         </table>
       </td>
     </tr>
@@ -368,27 +378,27 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) 
         </div>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            {_metric_card("⚖️",  "Weight",         m.get("weight_lbs"),        " lbs", 210,    higher_is_better=False, decimals=1)}
+            {_metric_card("⚖️", "Weight",     m.get("weight_lbs"),                     " lbs", cfg["goals"]["weight_target_lbs"], higher_is_better=False, decimals=1)}
             <td width="4%"></td>
-            {_metric_card("🦶",  "Steps",           m.get("steps"),             "",     10000,  higher_is_better=True)}
+            {_metric_card("🦶", "Steps",      m.get("steps"),                           "",     t["steps"],           higher_is_better=True)}
           </tr>
           <tr><td colspan="3" style="height:10px;"></td></tr>
           <tr>
-            {_metric_card("😴",  "Sleep",           m.get("sleep_hours"),       " hrs", 7.5,    higher_is_better=True,  decimals=1)}
+            {_metric_card("😴", "Sleep",      m.get("sleep_hours"),                    " hrs", t["sleep_hours"],     higher_is_better=True,  decimals=1)}
             <td width="4%"></td>
-            {_metric_card("🥩",  "Protein",         m.get("protein_g"),         "g",    200,    higher_is_better=True)}
+            {_metric_card("🥩", "Protein",    m.get("protein_g"),                      "g",    t["protein_g"],       higher_is_better=True)}
           </tr>
           <tr><td colspan="3" style="height:10px;"></td></tr>
           <tr>
-            {_metric_card("🔥",  cal_label,         m.get("calories_consumed"), " kcal",cal_target, higher_is_better=True)}
+            {_metric_card("🔥", cal_label,    m.get("calories_consumed"),              " kcal",cal_target,           higher_is_better=True)}
             <td width="4%"></td>
-            {_metric_card("❤️",  "Resting HR",      m.get("resting_hr"),        " bpm", 60,     higher_is_better=False)}
+            {_metric_card("❤️", "Resting HR", m.get("resting_hr"),                    " bpm", t["resting_hr_max"],  higher_is_better=False)}
           </tr>
           <tr><td colspan="3" style="height:10px;"></td></tr>
           <tr>
-            {_metric_card("🧠",  "HRV",             m.get("hrv"),               " ms",  50,     higher_is_better=True,  decimals=1)}
+            {_metric_card("🧠", "HRV",        m.get("hrv"),                            " ms",  t["hrv_min"],         higher_is_better=True,  decimals=1)}
             <td width="4%"></td>
-            {_metric_card("🏃",  "Distance",        m.get("walking_running_distance_km"), " km", 5, higher_is_better=True, decimals=1)}
+            {_metric_card("🏃", "Distance",   m.get("walking_running_distance_km"),    " km",  t["distance_km"],     higher_is_better=True,  decimals=1)}
           </tr>
         </table>
       </td>
@@ -428,18 +438,30 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) 
 
 
 def _build_plain_text(coaching_brief_text: str, date_str: str, metrics_summary: dict) -> str:
+    cfg = get_config()
+    t = get_targets()
+    events = get_events()
+    name = cfg["profile"]["name"]
+
     def fmt(key, unit="", decimals=0):
         v = metrics_summary.get(key)
         if v is None:
             return "N/A"
         return f"{v:.{decimals}f}{unit}" if decimals else f"{int(v)}{unit}"
 
-    days_to_spartan  = _days_until(SPARTAN_DATE)
-    days_to_triathlon = _days_until(TRIATHLON_DATE)
     quote_text, quote_author = _daily_pick(MOTIVATIONAL_QUOTES)
     verse_text, verse_ref = _daily_pick(BIBLE_VERSES)
 
-    return f"""KURT'S DAILY COACHING BRIEF — {date_str}
+    event_lines = []
+    for e in events:
+        if e["date"]:
+            d = datetime.strptime(e["date"], "%Y-%m-%d").date()
+            event_lines.append(f"    {e['emoji']}  {e['short']}: {_days_until(d)}d ({e['date']})")
+        else:
+            event_lines.append(f"    {e['emoji']}  {e['short']}: ongoing")
+    events_str = "\n".join(event_lines)
+
+    return f"""{name.upper()}'S DAILY COACHING BRIEF — {date_str}
 {'=' * 56}
 
 ✝️  "{verse_text}"
@@ -450,16 +472,14 @@ def _build_plain_text(coaching_brief_text: str, date_str: str, metrics_summary: 
 
 {'=' * 56}
 🏁  RACE COUNTDOWNS
-    🏟️  Spartan:    {days_to_spartan}d (May 9, 2026)
-    🏊  Triathlon:  {days_to_triathlon}d (Aug 15, 2026)
-    ⚡  Hyrox:      ongoing
+{events_str}
 
 {'=' * 56}
 📊  YESTERDAY'S NUMBERS
-    ⚖️  Weight:     {fmt('weight_lbs', ' lbs', 1)}  (goal: ≤210)
-    🦶  Steps:      {fmt('steps')}  (goal: 10,000)
-    😴  Sleep:      {fmt('sleep_hours', ' hrs', 1)}  (goal: 7.5)
-    🥩  Protein:    {fmt('protein_g', 'g')}  (goal: 200g)
+    ⚖️  Weight:     {fmt('weight_lbs', ' lbs', 1)}  (goal: ≤{cfg['goals']['weight_target_lbs']})
+    🦶  Steps:      {fmt('steps')}  (goal: {t['steps']:,})
+    😴  Sleep:      {fmt('sleep_hours', ' hrs', 1)}  (goal: {t['sleep_hours']})
+    🥩  Protein:    {fmt('protein_g', 'g')}  (goal: {t['protein_g']}g)
     🔥  Calories:   {fmt('calories_consumed', ' kcal')}
     ❤️  Resting HR: {fmt('resting_hr', ' bpm')}
     🧠  HRV:        {fmt('hrv', ' ms', 1)}
@@ -468,7 +488,7 @@ def _build_plain_text(coaching_brief_text: str, date_str: str, metrics_summary: 
 {coaching_brief_text}
 
 {'=' * 56}
-Powered by Claude · Built for Kurt
+Powered by Claude · Built for {name}
 """
 
 
@@ -477,8 +497,18 @@ def send_coaching_email(
     date_str: str,
     metrics_summary: dict,
 ):
-    days_to_spartan = _days_until(SPARTAN_DATE)
-    subject = f"💪 Kurt's Brief — {date_str} | {days_to_spartan}d to Spartan"
+    cfg = get_config()
+    events = get_events()
+    name = cfg["profile"]["name"]
+
+    first_event = next((e for e in events if e["date"]), None)
+    if first_event:
+        d = datetime.strptime(first_event["date"], "%Y-%m-%d").date()
+        countdown_str = f" | {_days_until(d)}d to {first_event['short']}"
+    else:
+        countdown_str = ""
+
+    subject = f"💪 {name}'s Brief — {date_str}{countdown_str}"
 
     html  = _build_html(coaching_brief_text, date_str, metrics_summary)
     plain = _build_plain_text(coaching_brief_text, date_str, metrics_summary)

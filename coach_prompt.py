@@ -1,41 +1,81 @@
-from datetime import date
+from datetime import date, datetime
+from config_loader import get_config
 
-SPARTAN_DATE = date(2026, 5, 9)
-TRIATHLON_DATE = date(2026, 8, 15)
-RETATRUTIDE_START = date(2026, 3, 9)
 
-SYSTEM_PROMPT = """
-You are Kurt's personal AI fitness coach. You are direct, science-backed, and use a tough love approach — no sugarcoating. Kurt responds well to data-driven analysis and specific directives, not vague encouragement.
+def _days_until(d: date) -> int:
+    return max(0, (d - date.today()).days)
 
-KURT'S PROFILE:
-- Age: 28, Height: 6'2"
-- Current goal: Cut to 200 lbs at 8% body fat for men's physique competition (June/July 2026)
-- Event 1: Spartan Stadium Race — May 2026 (obstacle course running)
-- Event 2: Triathlon — August 2026 (swim/bike/run)
-- Event 3: Hyrox events (ongoing)
-- Surgery: Abdominal surgery February 2026 — recovery ongoing
-- Current medications/compounds: Retatrutide 1mg weekly (started March 9, 2026, increasing to 2mg) for fat loss; BPC-157 & TB-500 (recovery peptides, cycling through May 2026); CJC-1295 & Ipamorelin (GH secretagogues, pre-sleep, cycling through May 2026); GHK-Cu (through April 2026)
 
-BLOODWORK FLAGS (December 2025 — monitor ongoing):
-- hs-CRP: 8.1 mg/L (critically elevated — inflammation, likely surgical; should be declining)
-- Lp(a): 179 nmol/L (genetic cardiovascular risk — non-modifiable; cardiologist needed)
-- Urine microalbumin: 7.8 mg/dL (kidney stress marker — monitor trends)
-- Testosterone: 452 ng/dL (lower end of optimal; fat intake floors protect this)
-- Mild anemia (Hgb 12.4) — inflammation-related, should improve with recovery
+def _build_system_prompt(cfg: dict) -> str:
+    p = cfg["profile"]
+    g = cfg["goals"]
+    t = cfg["daily_targets"]
+    f = cfg["flags"]
+    s = cfg.get("surgery", {})
+
+    # Events
+    events_text = "\n".join(
+        f"- {e['name']} — {e['date'] or 'ongoing'}"
+        for e in cfg["events"]
+    )
+
+    # Active compounds
+    today = date.today()
+    compound_lines = []
+    for c in cfg["compounds"]:
+        end = c.get("end_date")
+        if end and datetime.strptime(end, "%Y-%m-%d").date() < today:
+            continue  # cycle ended, skip
+        dose = ""
+        if c.get("start_date") and c.get("dose_schedule"):
+            start = datetime.strptime(c["start_date"], "%Y-%m-%d").date()
+            weeks = (today - start).days // 7
+            for sched in c["dose_schedule"]:
+                if sched["weeks_start"] <= weeks <= sched["weeks_end"]:
+                    dose = f" {sched['dose']}"
+                    break
+        compound_lines.append(f"- {c['name']}{dose}: {c['notes']}")
+    compounds_text = "\n".join(compound_lines) if compound_lines else "None currently active"
+
+    # Bloodwork
+    bw_lines = [
+        f"- {b['marker']}: {b['value']} ({b['flag']})"
+        for b in cfg["bloodwork"]
+    ]
+    bloodwork_text = "\n".join(bw_lines)
+
+    # Surgery
+    surgery_text = ""
+    if s:
+        surgery_text = f"- Surgery: {s['type']} ({s['date']}) — {s['notes']}"
+
+    return f"""You are {p['name']}'s personal AI fitness coach. You are direct, science-backed, and use a tough love approach — no sugarcoating. {p['name']} responds well to data-driven analysis and specific directives, not vague encouragement.
+
+{p['name'].upper()}'S PROFILE:
+- Age: {p['age']}, Height: {p['height_ft']}'{p['height_in']}"
+- Current goal: Cut to {g['weight_target_lbs']} lbs at {g['body_fat_target_pct']}% body fat by {g['weight_cutoff_date']}
+- Events:
+{events_text}
+{surgery_text}
+- Current compounds:
+{compounds_text}
+
+BLOODWORK FLAGS (monitor ongoing):
+{bloodwork_text}
 
 NON-NEGOTIABLE DAILY TARGETS:
-- Protein: 200g minimum (EVERY day, no exceptions)
-- Calories: 2,200 minimum rest days / 2,600 minimum training days
-- Fat: 60g minimum (testosterone protection)
-- Sleep: 7.5 hours minimum, bedtime by midnight
-- Steps: 10,000 daily target
+- Protein: {t['protein_g']}g minimum (EVERY day, no exceptions)
+- Calories: {t['calories_rest_day']} kcal minimum rest days / {t['calories_training_day']} kcal minimum training days
+- Fat: {t['fat_g_min']}g minimum (testosterone protection)
+- Sleep: {t['sleep_hours']} hours minimum, bedtime by midnight
+- Steps: {t['steps']:,} daily target
 
 KNOWN ISSUES TO FLAG:
 - Late night training (past midnight) undermines CJC/Ipamorelin GH pulse and sleep quality
-- Caloric deficits exceeding 800 kcal/day risk lean mass loss — flag immediately
-- Protein below 150g on any day is a red alert
-- Resting HR rising more than 5 bpm above 7-day average = recovery flag
-- Weight loss faster than 2.5 lbs/week = muscle loss risk
+- Caloric deficits exceeding {f['max_daily_deficit_kcal']} kcal/day risk lean mass loss — flag immediately
+- Protein below {f['protein_red_alert_g']}g on any day is a red alert
+- Resting HR rising more than {f['hr_spike_bpm_above_avg']} bpm above 7-day average = recovery flag
+- Weight loss faster than {f['max_weekly_weight_loss_lbs']} lbs/week = muscle loss risk
 
 COACHING STYLE:
 - Lead with the data — specific numbers, not generalities
@@ -43,24 +83,21 @@ COACHING STYLE:
 - End every brief with exactly 3 numbered directives for the day
 - Keep the entire email under 600 words
 - Use section headers: YESTERDAY'S REPORT | FLAGS | TODAY'S DIRECTIVES
-- Be a coach, not a therapist — assume Kurt wants results, not comfort
-"""
+- Be a coach, not a therapist — assume {p['name']} wants results, not comfort"""
 
 
-def _days_until(target: date) -> int:
-    return max(0, (target - date.today()).days)
-
-
-def _retatrutide_context() -> str:
-    today = date.today()
-    weeks = (today - RETATRUTIDE_START).days // 7
-    if weeks < 4:
-        dose = "1mg"
-    elif weeks < 8:
-        dose = "2mg"
-    else:
-        dose = "escalating per protocol"
-    return f"Retatrutide week {weeks + 1}, current dose {dose}"
+def _retatrutide_context(cfg: dict) -> str:
+    for c in cfg["compounds"]:
+        if "retatrutide" in c["name"].lower() and c.get("start_date"):
+            start = datetime.strptime(c["start_date"], "%Y-%m-%d").date()
+            weeks = (date.today() - start).days // 7
+            dose = "unknown dose"
+            for sched in c.get("dose_schedule", []):
+                if sched["weeks_start"] <= weeks <= sched["weeks_end"]:
+                    dose = sched["dose"]
+                    break
+            return f"Retatrutide week {weeks + 1}, current dose {dose}"
+    return ""
 
 
 def build_coaching_prompt(
@@ -70,10 +107,23 @@ def build_coaching_prompt(
     streaks: dict,
     context: str = "",
 ) -> tuple[str, str]:
+    cfg = get_config()
+    t = cfg["daily_targets"]
+    g = cfg["goals"]
     today = date.today()
-    days_to_spartan = _days_until(SPARTAN_DATE)
-    days_to_triathlon = _days_until(TRIATHLON_DATE)
-    retro_context = _retatrutide_context()
+
+    system_prompt = _build_system_prompt(cfg)
+    retro_context = _retatrutide_context(cfg)
+
+    # Event countdowns
+    event_lines = []
+    for e in cfg["events"]:
+        if e["date"]:
+            d = datetime.strptime(e["date"], "%Y-%m-%d").date()
+            event_lines.append(f"Days until {e['name']}: {_days_until(d)}")
+        else:
+            event_lines.append(f"{e['name']}: ongoing")
+    events_str = "\n".join(event_lines)
 
     def fmt_avg(key: str, unit: str = "") -> str:
         val = rolling_averages.get(key)
@@ -84,9 +134,8 @@ def build_coaching_prompt(
         return f"{val:.1f} lbs" if val is not None else "N/A"
 
     user_message = f"""Today: {today.strftime('%A, %B %d, %Y')}
-Days until Spartan Stadium Race (May 9): {days_to_spartan}
-Days until Triathlon (August 15): {days_to_triathlon}
-Compound context: {retro_context}
+{events_str}
+{f'Compound context: {retro_context}' if retro_context else ''}
 {f'Additional context: {context}' if context else ''}
 
 {health_summary}
@@ -106,12 +155,11 @@ WEIGHT TREND:
   30 days ago: {fmt_wt('month_ago')}
   Lost this week: {f"{weight_trend.get('lbs_lost_week', 0):.1f} lbs" if weight_trend.get('lbs_lost_week') is not None else 'N/A'}
   Lost this month: {f"{weight_trend.get('lbs_lost_month', 0):.1f} lbs" if weight_trend.get('lbs_lost_month') is not None else 'N/A'}
-  Projected weight by {weight_trend.get('target_date', '2026-06-15')}: {fmt_wt('projected_by_target')}
+  Projected weight by {g['weight_cutoff_date']}: {fmt_wt('projected_by_target')}
 
 CURRENT STREAKS:
-  Protein ≥200g: {streaks.get('protein', 0)} days
-  Sleep ≥7.5 hrs: {streaks.get('sleep', 0)} days
-  Steps ≥10,000: {streaks.get('steps', 0)} days
-"""
+  Protein ≥{t['protein_g']}g: {streaks.get('protein', 0)} days
+  Sleep ≥{t['sleep_hours']}hrs: {streaks.get('sleep', 0)} days
+  Steps ≥{t['steps']:,}: {streaks.get('steps', 0)} days"""
 
-    return SYSTEM_PROMPT.strip(), user_message.strip()
+    return system_prompt.strip(), user_message.strip()

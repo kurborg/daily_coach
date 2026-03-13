@@ -2,9 +2,9 @@ import json
 import os
 from datetime import datetime, date, timedelta
 from typing import Optional
+from config_loader import get_goals
 
 HISTORY_PATH = os.path.join(os.path.dirname(__file__), "data", "history.json")
-WEIGHT_TARGET_DATE = date(2026, 6, 15)
 
 
 def _load_history() -> dict:
@@ -78,11 +78,13 @@ def get_weight_trend() -> dict:
     if current is not None and month_ago is not None:
         lbs_lost_month = round(month_ago - current, 1)
 
+    goals = get_goals()
+    target_date = datetime.strptime(goals["weight_cutoff_date"], "%Y-%m-%d").date()
+
     if current is not None and lbs_lost_week is not None and lbs_lost_week > 0:
-        days_remaining = (WEIGHT_TARGET_DATE - today).days
-        weekly_rate = lbs_lost_week
+        days_remaining = (target_date - today).days
         weeks_remaining = days_remaining / 7
-        projected_by_target = round(current - (weekly_rate * weeks_remaining), 1)
+        projected_by_target = round(current - (lbs_lost_week * weeks_remaining), 1)
 
     return {
         "current": current,
@@ -91,7 +93,7 @@ def get_weight_trend() -> dict:
         "lbs_lost_week": lbs_lost_week,
         "lbs_lost_month": lbs_lost_month,
         "projected_by_target": projected_by_target,
-        "target_date": WEIGHT_TARGET_DATE.isoformat(),
+        "target_date": target_date.isoformat(),
     }
 
 

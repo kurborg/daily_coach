@@ -1,7 +1,7 @@
 import os
 import json
 import base64
-import tempfile
+import zipfile
 from io import BytesIO
 
 from google.oauth2 import service_account
@@ -45,19 +45,24 @@ def _find_folder_id(service, folder_name: str) -> str:
     return files[0]["id"]
 
 
-def _list_json_files(service, folder_id: str) -> list:
+def _list_export_files(service, folder_id: str) -> list:
+    """Return all .zip and .json files in the folder, newest first."""
     query = (
-        f"'{folder_id}' in parents and mimeType = 'application/json' and trashed = false"
+        f"'{folder_id}' in parents and trashed = false and ("
+        "mimeType = 'application/zip' or "
+        "mimeType = 'application/x-zip-compressed' or "
+        "mimeType = 'application/json'"
+        ")"
     )
     result = service.files().list(
         q=query,
         orderBy="createdTime desc",
-        fields="files(id, name, createdTime)",
+        fields="files(id, name, createdTime, mimeType)",
     ).execute()
     return result.get("files", [])
 
 
-def _download_file(service, file_id: str) -> dict:
+def _download_bytes(service, file_id: str) -> bytes:
     request = service.files().get_media(fileId=file_id)
     buf = BytesIO()
     downloader = MediaIoBaseDownload(buf, request)
@@ -65,30 +70,71 @@ def _download_file(service, file_id: str) -> dict:
     while not done:
         _, done = downloader.next_chunk()
     buf.seek(0)
-    return json.loads(buf.read().decode("utf-8"))
+    return buf.read()
+
+
+def _extract_json_from_zip(zip_bytes: bytes) -> dict:
+    """
+    Extract the health export JSON from a ZIP.
+    Health Auto Export ZIPs typically contain one JSON file (sometimes nested
+    in a subfolder). We take the largest JSON file found — that's the export.
+    """
+    with zipfile.ZipFile(BytesIO(zip_bytes)) as zf:
+        json_names = [
+            name for name in zf.namelist()
+            if name.endswith(".json") and not name.startswith("__MACOSX")
+        ]
+
+        if not json_names:
+            raise ValueError("No JSON file found inside the ZIP export.")
+
+        # If multiple JSONs, pick the largest (most complete)
+        if len(json_names) > 1:
+            json_names.sort(key=lambda n: zf.getinfo(n).file_size, reverse=True)
+            print(f"[Drive] ZIP contains {len(json_names)} JSON files — using largest: {json_names[0]}")
+        else:
+            print(f"[Drive] Extracting: {json_names[0]}")
+
+        with zf.open(json_names[0]) as f:
+            return json.loads(f.read().decode("utf-8"))
 
 
 def get_latest_health_export() -> dict:
     folder_name = os.environ.get("GOOGLE_DRIVE_FOLDER_NAME", "health-exports")
     service = _get_service()
     folder_id = _find_folder_id(service, folder_name)
-    files = _list_json_files(service, folder_id)
+    files = _list_export_files(service, folder_id)
+
     if not files:
         raise FileNotFoundError(
-            f"No JSON files found in Google Drive folder '{folder_name}'."
+            f"No export files (.zip or .json) found in Google Drive folder '{folder_name}'."
         )
-    return _download_file(service, files[0]["id"])
+
+    latest = files[0]
+    print(f"[Drive] Found export: {latest['name']} ({latest['mimeType']}) — {latest['createdTime']}")
+
+    raw_bytes = _download_bytes(service, latest["id"])
+
+    if latest["name"].endswith(".zip") or "zip" in latest["mimeType"]:
+        return _extract_json_from_zip(raw_bytes)
+    else:
+        return json.loads(raw_bytes.decode("utf-8"))
 
 
 def get_health_exports_last_n_days(n: int) -> list:
     folder_name = os.environ.get("GOOGLE_DRIVE_FOLDER_NAME", "health-exports")
     service = _get_service()
     folder_id = _find_folder_id(service, folder_name)
-    files = _list_json_files(service, folder_id)
+    files = _list_export_files(service, folder_id)
+
     results = []
     for f in files[:n]:
         try:
-            results.append(_download_file(service, f["id"]))
+            raw_bytes = _download_bytes(service, f["id"])
+            if f["name"].endswith(".zip") or "zip" in f["mimeType"]:
+                results.append(_extract_json_from_zip(raw_bytes))
+            else:
+                results.append(json.loads(raw_bytes.decode("utf-8")))
         except Exception as e:
-            print(f"Warning: could not download {f['name']}: {e}")
+            print(f"Warning: could not process {f['name']}: {e}")
     return results
