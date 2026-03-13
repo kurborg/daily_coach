@@ -1,5 +1,5 @@
 import argparse
-from datetime import date
+from datetime import date, timedelta
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -37,8 +37,9 @@ def run_for_user(cfg: dict, dry_run: bool = False):
             raw_json["data"]["workouts"] = workouts
             print(f"[Coach] Injected {len(workouts)} workout(s) from workout folder")
 
-    # 2. Parse
-    health = HealthData.parse(raw_json)
+    # 2. Parse — always report on yesterday's complete data
+    yesterday = (date.today() - timedelta(days=1)).isoformat()
+    health = HealthData.parse(raw_json, target_date=yesterday)
     summary_dict = health.to_summary_dict()
     coaching_str = health.to_coaching_string()
 

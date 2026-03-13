@@ -86,7 +86,16 @@ class HealthData:
         return activities
 
     @classmethod
-    def parse(cls, raw_json: dict) -> "HealthData":
+    def parse(cls, raw_json: dict, target_date: Optional[str] = None) -> "HealthData":
+        """
+        Parse a (potentially merged multi-day) health export.
+
+        target_date: YYYY-MM-DD of the day to report on (typically yesterday).
+        If not provided, falls back to the most recent date present in step_count.
+        Passing target_date explicitly is strongly recommended when the export
+        folder is updated frequently (e.g. every 5 minutes) so that today's
+        partial data is never mistaken for a complete day.
+        """
         data = raw_json.get("data", raw_json)
         metrics = {m["name"]: m for m in data.get("metrics", [])}
         workouts = data.get("workouts", [])
@@ -100,38 +109,34 @@ class HealthData:
             val = entries[0].get("qty")
             return float(val) if val is not None else None
 
-        # ── Reference date: most complete day in step_count ──────────────────
-        # With frequent exports (e.g. every 5 min), today's partial file may be
-        # the most recent. Pick the date with the most step entries instead —
-        # a full day has many more intervals than a partial day in progress.
-        _ref_date: Optional[str] = None
-        _steps_metric = metrics.get("step_count")
-        if _steps_metric and _steps_metric.get("data"):
-            from collections import Counter
-            _date_counts: Counter = Counter(
-                e["date"][:10] for e in _steps_metric["data"] if e.get("date")
-            )
-            # Pick the date with the most entries; break ties by choosing the most recent
-            _ref_date = max(_date_counts, key=lambda d: (_date_counts[d], d))
+        # ── Reference date ────────────────────────────────────────────────────
+        # Use the explicitly-supplied target_date (yesterday) when available.
+        # Fallback: most recent date present in step_count (always present in
+        # daily exports and reliable as a day anchor).
+        _ref_date: Optional[str] = target_date
+        if _ref_date is None:
+            _steps_metric = metrics.get("step_count")
+            if _steps_metric and _steps_metric.get("data"):
+                entries = sorted(
+                    _steps_metric["data"], key=lambda x: x.get("date", ""), reverse=True
+                )
+                _ref_date = entries[0]["date"][:10]
 
         def latest_day_sum(metric_name: str) -> Optional[float]:
             """
-            Sum all entries for the reference date (most recent day in step_count).
+            Sum all entries for the reference date.
             Required for minute-level metrics (steps, calories, distance) where
             each entry is a single minute's value, not a daily total.
             Also deduplicates nutrition data from multiple sources (e.g. MyFitnessPal).
             Returns None if the metric has no entries on the reference date, preventing
-            stale data from older days in the 7-day merged export from bleeding through.
+            stale data from other days in the merged export from bleeding through.
             """
             m = metrics.get(metric_name)
             if not m or not m.get("data"):
                 return None
-            target_date = _ref_date
-            if target_date is None:
-                # Fallback: use this metric's own most-recent date
-                entries = sorted(m["data"], key=lambda x: x.get("date", ""), reverse=True)
-                target_date = entries[0]["date"][:10]
-            day_entries = [e for e in m["data"] if e.get("date", "")[:10] == target_date]
+            if _ref_date is None:
+                return None
+            day_entries = [e for e in m["data"] if e.get("date", "")[:10] == _ref_date]
             vals = [e["qty"] for e in day_entries if e.get("qty") is not None]
             return round(sum(vals), 1) if vals else None
 
