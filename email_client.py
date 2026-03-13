@@ -1,8 +1,9 @@
 import os
 import random
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from datetime import date, datetime
-from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
 from config_loader import get_config, get_targets, get_events
 
 # ── Color Palette ─────────────────────────────────────────────────────────────
@@ -513,15 +514,18 @@ def send_coaching_email(
     html  = _build_html(coaching_brief_text, date_str, metrics_summary)
     plain = _build_plain_text(coaching_brief_text, date_str, metrics_summary)
 
-    message = Mail(
-        from_email=os.environ["FROM_EMAIL"],
-        to_emails=os.environ["TO_EMAIL"],
-        subject=subject,
-        html_content=html,
-        plain_text_content=plain,
-    )
+    from_email = os.environ["FROM_EMAIL"]
+    to_email   = os.environ["TO_EMAIL"]
 
-    sg = SendGridAPIClient(os.environ["SENDGRID_API_KEY"])
-    response = sg.send(message)
-    print(f"[SendGrid] Email sent — status: {response.status_code}")
-    return response
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = from_email
+    msg["To"]      = to_email
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html,  "html"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(from_email, os.environ["GMAIL_APP_PASSWORD"])
+        server.sendmail(from_email, to_email, msg.as_string())
+
+    print(f"[Gmail] Email sent to {to_email}")
