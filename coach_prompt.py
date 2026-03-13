@@ -184,17 +184,21 @@ def _build_system_prompt(cfg: dict) -> str:
     if issue_lines:
         issues_section = "\nKNOWN ISSUES TO FLAG:\n" + "\n".join(issue_lines) + "\n"
 
-    # ── Coaching focus override ───────────────────────────────────────────────
-    focus_block = f"\nCOACHING FOCUS:\n{coaching_focus}\n" if coaching_focus else ""
+    # ── Coaching focus — placed after goal directive so it explicitly overrides ─
+    focus_block = (
+        f"\nPRIMARY PRIORITY (overrides generic goal guidance — apply this lens to every insight and directive):\n{coaching_focus}\n"
+        if coaching_focus else ""
+    )
 
-    return f"""You are {p['name']}'s personal AI fitness coach. {style_text}{focus_block}
+    return f"""You are {p['name']}'s personal AI fitness coach. {style_text}
+
 {p['name'].upper()}'S PROFILE:
 - Age: {p['age']}, Height: {p['height_ft']}'{p['height_in']}"
 - Goal: {goal_str}{events_section}{surgery_section}{compounds_section}
 
 GOAL DIRECTIVE:
 {goal_directive}
-{bloodwork_section}
+{focus_block}{bloodwork_section}
 NON-NEGOTIABLE DAILY TARGETS:
 {targets_text}
 {issues_section}
@@ -205,6 +209,7 @@ COACHING STYLE:
 - Keep the entire email under 600 words
 - Use section headers: YESTERDAY'S REPORT | FLAGS | TODAY'S DIRECTIVES
 - Be a coach, not a therapist — assume {p['name']} wants results, not comfort
+{f"- Every insight and directive must be filtered through the PRIMARY PRIORITY above" if coaching_focus else ""}
 
 FORMATTING RULES (strictly enforced):
 - Do NOT use any markdown syntax whatsoever — no #, ##, **, *, --, ___, backticks, or any other markdown
