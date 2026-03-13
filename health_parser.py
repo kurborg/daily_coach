@@ -94,14 +94,23 @@ class HealthData:
             if waketimes:
                 sleep_wake_time = max(waketimes)
 
+        def _num(val) -> float:
+            """Health Auto Export returns fields as either a plain number
+            or a dict like {"qty": 5.2, "units": "km"}. Unwrap either."""
+            if val is None:
+                return 0.0
+            if isinstance(val, dict):
+                return float(val.get("qty") or val.get("value") or 0)
+            return float(val)
+
         # Parse workouts
         parsed_workouts = []
         for w in workouts:
             parsed_workouts.append({
                 "name": w.get("name", "Unknown"),
-                "duration_min": w.get("duration", 0),
-                "distance_km": w.get("distance", 0),
-                "active_energy": w.get("activeEnergy", w.get("activeEnergyBurned", 0)),
+                "duration_min": _num(w.get("duration")),
+                "distance_km": _num(w.get("distance")),
+                "active_energy": _num(w.get("activeEnergy") or w.get("activeEnergyBurned")),
                 "start": w.get("start", w.get("startDate", "")),
             })
 
