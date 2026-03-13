@@ -103,6 +103,7 @@ def _metric_card(emoji: str, label: str, value, unit: str, target,
                  higher_is_better: bool = True, decimals: int = 0) -> str:
     if value is None:
         pct = 0
+        pct_label = "Not logged"
         display = "N/A"
         status_color = MUTED
         status_icon = "—"
@@ -112,6 +113,7 @@ def _metric_card(emoji: str, label: str, value, unit: str, target,
         # Informational — no goal set, just show the value neutrally
         display = f"{value:.{decimals}f}" if decimals else f"{int(value)}"
         pct = 0
+        pct_label = "No goal set"
         status_color = MUTED
         status_icon = "📍"
         bar_color = MUTED
@@ -126,6 +128,7 @@ def _metric_card(emoji: str, label: str, value, unit: str, target,
         else:
             pct = min(100, int((target / value) * 100)) if value > 0 else 100
         bar_color = GREEN if on_target else (ORANGE if pct >= 75 else RED)
+        pct_label = f"{pct}% of goal"
         note = f"Goal: {int(target)}{unit}" if decimals == 0 else f"Goal: {target:.{decimals}f}{unit}"
 
     return f"""
@@ -149,7 +152,7 @@ def _metric_card(emoji: str, label: str, value, unit: str, target,
                 </td>
               </tr>
             </table>
-            <div style="font-size:10px;color:{MUTED};margin-top:5px;">{pct}% of goal</div>
+            <div style="font-size:10px;color:{MUTED};margin-top:5px;">{pct_label}</div>
           </td>
         </tr>
       </table>
