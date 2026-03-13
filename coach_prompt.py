@@ -49,8 +49,11 @@ def _build_system_prompt(cfg: dict) -> str:
     if s:
         surgery_text = f"- Surgery: {s['type']} ({s['date']}) — {s['notes']}"
 
-    return f"""You are {p['name']}'s personal AI fitness coach. You are direct, science-backed, and use a tough love approach — no sugarcoating. {p['name']} responds well to data-driven analysis and specific directives, not vague encouragement.
+    coaching_focus = cfg.get("coaching_focus", "")
+    focus_block = f"\nCOACHING FOCUS:\n{coaching_focus}\n" if coaching_focus else ""
 
+    return f"""You are {p['name']}'s personal AI fitness coach. You are direct, science-backed, and use a tough love approach — no sugarcoating. {p['name']} responds well to data-driven analysis and specific directives, not vague encouragement.
+{focus_block}
 {p['name'].upper()}'S PROFILE:
 - Age: {p['age']}, Height: {p['height_ft']}'{p['height_in']}"
 - Current goal: Cut to {g['weight_target_lbs']} lbs at {g['body_fat_target_pct']}% body fat by {g['weight_cutoff_date']}

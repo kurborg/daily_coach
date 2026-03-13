@@ -12,6 +12,8 @@
     "height_in": 2
   },
 
+  "coaching_focus": "Aesthetics-first physique development. The primary goal is to look as good as possible — maximizing muscle definition, vascularity, and visual symmetry. Every decision (nutrition, training, recovery) should be filtered through the lens of how it impacts body composition and appearance. Performance in races and events is secondary to achieving a stage-worthy physique. Prioritize muscle retention during the cut above all else. Flag anything that risks sacrificing muscle for scale weight.",
+
   "goals": {
     "weight_target_lbs": 200,
     "body_fat_target_pct": 8,
