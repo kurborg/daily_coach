@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 from typing import Optional
 from datetime import datetime
 
-MILES_TO_KM = 1.60934
 LBS_TO_KG = 0.453592
+METERS_TO_MILES = 0.000621371
 
 
 def _weight_as_kg(metric: Optional[dict]) -> Optional[float]:
@@ -37,9 +37,9 @@ class HealthData:
     carbs_g: Optional[float] = None
     fat_g: Optional[float] = None
     calories_consumed: Optional[float] = None
-    walking_running_distance_km: Optional[float] = None
-    cycling_distance_km: Optional[float] = None
-    swimming_distance_km: Optional[float] = None
+    walking_running_distance_mi: Optional[float] = None
+    cycling_distance_mi: Optional[float] = None
+    swimming_distance_mi: Optional[float] = None
     workout_minutes: Optional[float] = None
     body_fat_pct: Optional[float] = None
 
@@ -56,6 +56,19 @@ class HealthData:
         return None
 
     @property
+    def total_cardio_mi(self) -> Optional[float]:
+        """Sum of all cardio distances logged that day (any combination of walk/run/bike/swim)."""
+        vals = [
+            v for v in [
+                self.walking_running_distance_mi,
+                self.cycling_distance_mi,
+                self.swimming_distance_mi,
+            ]
+            if v is not None
+        ]
+        return round(sum(vals), 2) if vals else None
+
+    @property
     def derived_activities(self) -> list:
         """
         Build activity entries from distance metrics when no workouts array exists.
@@ -63,12 +76,12 @@ class HealthData:
         activity is inferred from cycling_distance, walking_running_distance, and swimming_distance.
         """
         activities = []
-        if self.cycling_distance_km and self.cycling_distance_km > 0.1:
-            activities.append({"name": "Cycling", "distance_km": self.cycling_distance_km})
-        if self.walking_running_distance_km and self.walking_running_distance_km > 0.1:
-            activities.append({"name": "Walk/Run", "distance_km": self.walking_running_distance_km})
-        if self.swimming_distance_km and self.swimming_distance_km > 0.01:
-            activities.append({"name": "Swimming", "distance_km": self.swimming_distance_km})
+        if self.cycling_distance_mi and self.cycling_distance_mi > 0.06:
+            activities.append({"name": "Cycling", "distance_mi": self.cycling_distance_mi})
+        if self.walking_running_distance_mi and self.walking_running_distance_mi > 0.06:
+            activities.append({"name": "Walk/Run", "distance_mi": self.walking_running_distance_mi})
+        if self.swimming_distance_mi and self.swimming_distance_mi > 0.01:
+            activities.append({"name": "Swimming", "distance_mi": self.swimming_distance_mi})
         return activities
 
     @classmethod
@@ -149,9 +162,16 @@ class HealthData:
             duration_min = round(duration_sec / 60, 1)
             energy = _qty(w.get("activeEnergyBurned") or w.get("activeEnergy"))
             dist_raw = w.get("distance")
-            dist_km = _qty(dist_raw)
-            if isinstance(dist_raw, dict) and dist_raw.get("units") == "mi":
-                dist_km = round(dist_km * MILES_TO_KM, 2)
+            dist_val = _qty(dist_raw)
+            # Workouts store distance in miles; convert meters if needed
+            if isinstance(dist_raw, dict):
+                units = dist_raw.get("units", "mi")
+                if units == "m":
+                    dist_mi = round(dist_val * METERS_TO_MILES, 2)
+                else:
+                    dist_mi = round(dist_val, 2)  # already miles
+            else:
+                dist_mi = round(dist_val, 2)
             avg_hr = _qty(
                 w.get("avgHeartRate")
                 or (w.get("heartRate") or {}).get("avg")
@@ -159,26 +179,27 @@ class HealthData:
             parsed_workouts.append({
                 "name": w.get("name", "Unknown"),
                 "duration_min": duration_min,
-                "distance_km": dist_km,
+                "distance_mi": dist_mi,
                 "active_energy": round(energy, 0),
                 "avg_hr": round(avg_hr, 0) if avg_hr else None,
                 "start": w.get("start", ""),
             })
 
-        # ── Distances (minute-level → sum the day) ─────────────────────────────
-        walk_mi = latest_day_sum("walking_running_distance")
-        walk_km = round(walk_mi * MILES_TO_KM, 2) if walk_mi is not None else None
+        # ── Distances (minute-level → sum the day, native miles) ──────────────
+        # Health Auto Export exports walk/run and cycling in miles
+        walk_mi_raw = latest_day_sum("walking_running_distance")
+        walk_mi = round(walk_mi_raw, 2) if walk_mi_raw is not None else None
 
-        cycle_mi = latest_day_sum("cycling_distance")
-        cycle_km = round(cycle_mi * MILES_TO_KM, 2) if cycle_mi is not None else None
+        cycle_mi_raw = latest_day_sum("cycling_distance")
+        cycle_mi = round(cycle_mi_raw, 2) if cycle_mi_raw is not None else None
 
-        # Swimming distance — Health Auto Export uses meters; fall back to miles
+        # Swimming distance — Health Auto Export uses meters; fall back to miles key
         swim_m = latest_day_sum("swimming_distance")
         if swim_m is not None:
-            swim_km = round(swim_m / 1000, 2)
+            swim_mi = round(swim_m * METERS_TO_MILES, 3)
         else:
-            swim_mi = latest_day_sum("swimming_distance_goal")  # alternative key
-            swim_km = round(swim_mi * MILES_TO_KM, 2) if swim_mi is not None else None
+            swim_mi_raw = latest_day_sum("swimming_distance_goal")
+            swim_mi = round(swim_mi_raw, 2) if swim_mi_raw is not None else None
 
         # ── Workout minutes ────────────────────────────────────────────────────
         # Prefer sum of explicit workout durations; fall back to apple_exercise_time
@@ -208,9 +229,9 @@ class HealthData:
             carbs_g=latest_day_sum("carbohydrates"),
             fat_g=latest_day_sum("total_fat"),
             calories_consumed=latest_day_sum("dietary_energy"),
-            walking_running_distance_km=walk_km,
-            cycling_distance_km=cycle_km,
-            swimming_distance_km=swim_km,
+            walking_running_distance_mi=walk_mi,
+            cycling_distance_mi=cycle_mi,
+            swimming_distance_mi=swim_mi,
             workout_minutes=workout_mins,
         )
 
@@ -237,9 +258,10 @@ class HealthData:
             "carbs_g": self.carbs_g,
             "fat_g": self.fat_g,
             "calories_consumed": self.calories_consumed,
-            "walking_running_distance_km": self.walking_running_distance_km,
-            "cycling_distance_km": self.cycling_distance_km,
-            "swimming_distance_km": self.swimming_distance_km,
+            "walking_running_distance_mi": self.walking_running_distance_mi,
+            "cycling_distance_mi": self.cycling_distance_mi,
+            "swimming_distance_mi": self.swimming_distance_mi,
+            "total_cardio_mi": self.total_cardio_mi,
             "workout_minutes": self.workout_minutes,
         }
 
@@ -257,17 +279,15 @@ class HealthData:
         if activities:
             for a in activities:
                 if "duration_min" in a:
-                    # Full workout object
                     activity_str += f"\n    - {a['name']}: {a['duration_min']:.0f} min"
-                    if a.get("distance_km"):
-                        activity_str += f", {a['distance_km']:.1f} km"
+                    if a.get("distance_mi"):
+                        activity_str += f", {a['distance_mi']:.2f} mi"
                     if a.get("active_energy"):
                         activity_str += f", {a['active_energy']:.0f} kcal"
                     if a.get("avg_hr"):
                         activity_str += f", avg HR {a['avg_hr']:.0f} bpm"
                 else:
-                    # Derived from distance metric
-                    activity_str += f"\n    - {a['name']}: {a['distance_km']:.1f} km"
+                    activity_str += f"\n    - {a['name']}: {a['distance_mi']:.2f} mi"
         else:
             activity_str = "\n    - No activity logged"
 
@@ -290,10 +310,11 @@ Activity:
 {fmt('Active Calories', self.active_calories, ' kcal')}
 {fmt('BMR', self.bmr_calories, ' kcal')}
 {fmt('TDEE (est)', self.tdee, ' kcal')}
-{fmt('Walk/Run Distance', self.walking_running_distance_km, ' km', 2)}
-{fmt('Cycling Distance', self.cycling_distance_km, ' km', 2)}
-{fmt('Swimming Distance', self.swimming_distance_km, ' km', 2)}
 {fmt('Workout Minutes', self.workout_minutes, ' min', 0)}
+{fmt('Walk/Run', self.walking_running_distance_mi, ' mi', 2)}
+{fmt('Cycling', self.cycling_distance_mi, ' mi', 2)}
+{fmt('Swimming', self.swimming_distance_mi, ' mi', 2)}
+{fmt('Total Cardio', self.total_cardio_mi, ' mi', 2)}
 
 Workouts/Activity:{activity_str}
 

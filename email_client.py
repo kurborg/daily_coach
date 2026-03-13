@@ -99,7 +99,7 @@ def _daily_pick(items: list) -> tuple:
     return rng.choice(items)
 
 
-def _metric_card(emoji: str, label: str, value, unit: str, target: float,
+def _metric_card(emoji: str, label: str, value, unit: str, target,
                  higher_is_better: bool = True, decimals: int = 0) -> str:
     if value is None:
         pct = 0
@@ -108,6 +108,14 @@ def _metric_card(emoji: str, label: str, value, unit: str, target: float,
         status_icon = "—"
         bar_color = MUTED
         note = "Not logged"
+    elif target is None:
+        # Informational — no goal set, just show the value neutrally
+        display = f"{value:.{decimals}f}" if decimals else f"{int(value)}"
+        pct = 0
+        status_color = MUTED
+        status_icon = "📍"
+        bar_color = MUTED
+        note = "Logged"
     else:
         display = f"{value:.{decimals}f}" if decimals else f"{int(value)}"
         on_target = (value >= target) if higher_is_better else (value <= target)
@@ -118,8 +126,7 @@ def _metric_card(emoji: str, label: str, value, unit: str, target: float,
         else:
             pct = min(100, int((target / value) * 100)) if value > 0 else 100
         bar_color = GREEN if on_target else (ORANGE if pct >= 75 else RED)
-        diff = value - target if higher_is_better else target - value
-        note = f"Goal: {int(target)}{unit}" if decimals == 0 else f"Goal: {target:.1f}{unit}"
+        note = f"Goal: {int(target)}{unit}" if decimals == 0 else f"Goal: {target:.{decimals}f}{unit}"
 
     return f"""
     <td width="48%" style="vertical-align:top;padding:6px 0;">
@@ -223,8 +230,10 @@ def _format_brief_html(coaching_brief_text: str) -> str:
     return "\n".join(html_lines)
 
 
-def _resolve_target(cfg: dict, card: dict, metrics_summary: dict) -> float:
-    """Resolve card target, using training-day override if applicable."""
+def _resolve_target(cfg: dict, card: dict, metrics_summary: dict):
+    """Resolve card target. Returns None if no target_ref is set (informational card)."""
+    if not card.get("target_ref"):
+        return None
     if card.get("training_day_target_ref") and metrics_summary.get("workouts"):
         return resolve_ref(cfg, card["training_day_target_ref"])
     return resolve_ref(cfg, card["target_ref"])
@@ -475,7 +484,8 @@ def _build_plain_text(coaching_brief_text: str, date_str: str, metrics_summary: 
             val_str = f"{v:.{decimals}f}{card.get('unit','')}"
         else:
             val_str = f"{int(v)}{card.get('unit','')}"
-        metric_lines.append(f"    {card['emoji']}  {card['label']}: {val_str}  (goal: {target})")
+        goal_str = f"  (goal: {target})" if target is not None else ""
+        metric_lines.append(f"    {card['emoji']}  {card['label']}: {val_str}{goal_str}")
     metrics_block = "\n".join(metric_lines)
 
     return f"""{name.upper()}'S DAILY COACHING BRIEF — {date_str}
