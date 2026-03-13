@@ -39,6 +39,8 @@ class HealthData:
     calories_consumed: Optional[float] = None
     walking_running_distance_km: Optional[float] = None
     cycling_distance_km: Optional[float] = None
+    swimming_distance_km: Optional[float] = None
+    workout_minutes: Optional[float] = None
     body_fat_pct: Optional[float] = None
 
     @property
@@ -58,13 +60,15 @@ class HealthData:
         """
         Build activity entries from distance metrics when no workouts array exists.
         Health Auto Export daily JSON exports don't include a workouts array —
-        activity is inferred from cycling_distance and walking_running_distance.
+        activity is inferred from cycling_distance, walking_running_distance, and swimming_distance.
         """
         activities = []
         if self.cycling_distance_km and self.cycling_distance_km > 0.1:
             activities.append({"name": "Cycling", "distance_km": self.cycling_distance_km})
         if self.walking_running_distance_km and self.walking_running_distance_km > 0.1:
             activities.append({"name": "Walk/Run", "distance_km": self.walking_running_distance_km})
+        if self.swimming_distance_km and self.swimming_distance_km > 0.01:
+            activities.append({"name": "Swimming", "distance_km": self.swimming_distance_km})
         return activities
 
     @classmethod
@@ -168,6 +172,23 @@ class HealthData:
         cycle_mi = latest_day_sum("cycling_distance")
         cycle_km = round(cycle_mi * MILES_TO_KM, 2) if cycle_mi is not None else None
 
+        # Swimming distance — Health Auto Export uses meters; fall back to miles
+        swim_m = latest_day_sum("swimming_distance")
+        if swim_m is not None:
+            swim_km = round(swim_m / 1000, 2)
+        else:
+            swim_mi = latest_day_sum("swimming_distance_goal")  # alternative key
+            swim_km = round(swim_mi * MILES_TO_KM, 2) if swim_mi is not None else None
+
+        # ── Workout minutes ────────────────────────────────────────────────────
+        # Prefer sum of explicit workout durations; fall back to apple_exercise_time
+        if parsed_workouts:
+            workout_mins = round(sum(w["duration_min"] for w in parsed_workouts), 1)
+        else:
+            workout_mins = latest_day_sum("apple_exercise_time")
+            if workout_mins is None:
+                workout_mins = latest_day_sum("exercise_time")
+
         return cls(
             steps=latest_day_sum("step_count"),
             active_calories=latest_day_sum("active_energy"),
@@ -189,6 +210,8 @@ class HealthData:
             calories_consumed=latest_day_sum("dietary_energy"),
             walking_running_distance_km=walk_km,
             cycling_distance_km=cycle_km,
+            swimming_distance_km=swim_km,
+            workout_minutes=workout_mins,
         )
 
     def to_summary_dict(self) -> dict:
@@ -216,6 +239,8 @@ class HealthData:
             "calories_consumed": self.calories_consumed,
             "walking_running_distance_km": self.walking_running_distance_km,
             "cycling_distance_km": self.cycling_distance_km,
+            "swimming_distance_km": self.swimming_distance_km,
+            "workout_minutes": self.workout_minutes,
         }
 
     def to_coaching_string(self) -> str:
@@ -267,6 +292,8 @@ Activity:
 {fmt('TDEE (est)', self.tdee, ' kcal')}
 {fmt('Walk/Run Distance', self.walking_running_distance_km, ' km', 2)}
 {fmt('Cycling Distance', self.cycling_distance_km, ' km', 2)}
+{fmt('Swimming Distance', self.swimming_distance_km, ' km', 2)}
+{fmt('Workout Minutes', self.workout_minutes, ' min', 0)}
 
 Workouts/Activity:{activity_str}
 

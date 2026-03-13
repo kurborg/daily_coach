@@ -26,7 +26,10 @@
     "active_calories": 400,
     "hrv_min": 50,
     "resting_hr_max": 60,
-    "distance_km": 5
+    "walk_run_km": 5,
+    "cycling_km": 20,
+    "swimming_km": 1,
+    "workout_minutes": 45
   },
 
   "events": [
@@ -133,14 +136,17 @@
   },
 
   "metric_cards": [
-    {"data_key": "weight_lbs",         "label": "Weight",     "emoji": "⚖️", "unit": " lbs",  "target_ref": "goals.weight_target_lbs",         "higher_is_better": false, "decimals": 1},
-    {"data_key": "steps",              "label": "Steps",      "emoji": "🦶", "unit": "",      "target_ref": "daily_targets.steps",             "higher_is_better": true,  "decimals": 0},
-    {"data_key": "sleep_hours",        "label": "Sleep",      "emoji": "😴", "unit": " hrs",  "target_ref": "daily_targets.sleep_hours",       "higher_is_better": true,  "decimals": 1},
-    {"data_key": "protein_g",          "label": "Protein",    "emoji": "🥩", "unit": "g",     "target_ref": "daily_targets.protein_g",         "higher_is_better": true,  "decimals": 0},
-    {"data_key": "calories_consumed",  "label": "Calories",   "emoji": "🔥", "unit": " kcal", "target_ref": "daily_targets.calories_rest_day", "training_day_target_ref": "daily_targets.calories_training_day", "higher_is_better": true, "decimals": 0},
-    {"data_key": "resting_hr",         "label": "Resting HR", "emoji": "❤️", "unit": " bpm",  "target_ref": "daily_targets.resting_hr_max",    "higher_is_better": false, "decimals": 0},
-    {"data_key": "hrv",                "label": "HRV",        "emoji": "🧠", "unit": " ms",   "target_ref": "daily_targets.hrv_min",           "higher_is_better": true,  "decimals": 1},
-    {"data_key": "cycling_distance_km","label": "Cycling",    "emoji": "🚴", "unit": " km",   "target_ref": "daily_targets.distance_km",       "higher_is_better": true,  "decimals": 1}
+    {"data_key": "weight_lbs",                  "label": "Weight",          "emoji": "⚖️", "unit": " lbs",  "target_ref": "goals.weight_target_lbs",                "higher_is_better": false, "decimals": 1},
+    {"data_key": "steps",                       "label": "Steps",           "emoji": "👟", "unit": "",      "target_ref": "daily_targets.steps",                    "higher_is_better": true,  "decimals": 0},
+    {"data_key": "sleep_hours",                 "label": "Sleep",           "emoji": "😴", "unit": " hrs",  "target_ref": "daily_targets.sleep_hours",              "higher_is_better": true,  "decimals": 1},
+    {"data_key": "protein_g",                   "label": "Protein",         "emoji": "🥩", "unit": "g",     "target_ref": "daily_targets.protein_g",                "higher_is_better": true,  "decimals": 0},
+    {"data_key": "calories_consumed",           "label": "Calories",        "emoji": "🔥", "unit": " kcal", "target_ref": "daily_targets.calories_rest_day",        "training_day_target_ref": "daily_targets.calories_training_day", "higher_is_better": true, "decimals": 0},
+    {"data_key": "resting_hr",                  "label": "Resting HR",      "emoji": "❤️", "unit": " bpm",  "target_ref": "daily_targets.resting_hr_max",           "higher_is_better": false, "decimals": 0},
+    {"data_key": "hrv",                         "label": "HRV",             "emoji": "🧠", "unit": " ms",   "target_ref": "daily_targets.hrv_min",                  "higher_is_better": true,  "decimals": 1},
+    {"data_key": "workout_minutes",             "label": "Workout Time",    "emoji": "🏋️", "unit": " min",  "target_ref": "daily_targets.workout_minutes",          "higher_is_better": true,  "decimals": 0},
+    {"data_key": "walking_running_distance_km", "label": "Walk / Run",      "emoji": "🏃", "unit": " km",   "target_ref": "daily_targets.walk_run_km",              "higher_is_better": true,  "decimals": 1},
+    {"data_key": "cycling_distance_km",         "label": "Cycling",         "emoji": "🚴", "unit": " km",   "target_ref": "daily_targets.cycling_km",               "higher_is_better": true,  "decimals": 1},
+    {"data_key": "swimming_distance_km",        "label": "Swimming",        "emoji": "🏊", "unit": " km",   "target_ref": "daily_targets.swimming_km",              "higher_is_better": true,  "decimals": 2}
   ],
 
   "streaks": [
