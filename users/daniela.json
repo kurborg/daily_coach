@@ -1,7 +1,11 @@
 {
+  "folder_id": "1WNwuMU05xTuBUe_d4Pp38HKcZ40_wyPG",
+  "folder_name": "Health-exports",
+  "email": "danielascavino3@gmail.com",
+
   "profile": {
-    "name": "Kurt",
-    "age": 28,
+    "name": "Daniela",
+    "age": 26,
     "height_ft": 6,
     "height_in": 2
   },
@@ -126,5 +130,22 @@
     "type": "Abdominal surgery",
     "date": "2026-02-01",
     "notes": "recovery ongoing"
-  }
+  },
+
+  "metric_cards": [
+    {"data_key": "weight_lbs",         "label": "Weight",     "emoji": "⚖️", "unit": " lbs",  "target_ref": "goals.weight_target_lbs",         "higher_is_better": false, "decimals": 1},
+    {"data_key": "steps",              "label": "Steps",      "emoji": "👟", "unit": "",      "target_ref": "daily_targets.steps",             "higher_is_better": true,  "decimals": 0},
+    {"data_key": "sleep_hours",        "label": "Sleep",      "emoji": "😴", "unit": " hrs",  "target_ref": "daily_targets.sleep_hours",       "higher_is_better": true,  "decimals": 1},
+    {"data_key": "protein_g",          "label": "Protein",    "emoji": "🥩", "unit": "g",     "target_ref": "daily_targets.protein_g",         "higher_is_better": true,  "decimals": 0},
+    {"data_key": "calories_consumed",  "label": "Calories",   "emoji": "🔥", "unit": " kcal", "target_ref": "daily_targets.calories_rest_day", "training_day_target_ref": "daily_targets.calories_training_day", "higher_is_better": true, "decimals": 0},
+    {"data_key": "resting_hr",         "label": "Resting HR", "emoji": "❤️", "unit": " bpm",  "target_ref": "daily_targets.resting_hr_max",    "higher_is_better": false, "decimals": 0},
+    {"data_key": "hrv",                "label": "HRV",        "emoji": "🧠", "unit": " ms",   "target_ref": "daily_targets.hrv_min",           "higher_is_better": true,  "decimals": 1},
+    {"data_key": "cycling_distance_km","label": "Cycling",    "emoji": "🚴", "unit": " km",   "target_ref": "daily_targets.distance_km",       "higher_is_better": true,  "decimals": 1}
+  ],
+
+  "streaks": [
+    {"metric": "protein_g",    "label": "Protein", "unit": "g",   "target_ref": "daily_targets.protein_g",   "higher_is_better": true},
+    {"metric": "sleep_hours",  "label": "Sleep",   "unit": "hrs", "target_ref": "daily_targets.sleep_hours", "higher_is_better": true},
+    {"metric": "steps",        "label": "Steps",   "unit": "",    "target_ref": "daily_targets.steps",       "higher_is_better": true}
+  ]
 }

@@ -72,14 +72,15 @@ def get_weight_trend(user_id: str, cfg: dict) -> dict:
 
     lbs_lost_week = round(week_ago - current, 1) if current and week_ago else None
     lbs_lost_month = round(month_ago - current, 1) if current and month_ago else None
+
     projected_by_target = None
-
-    goals = cfg["goals"]
-    target_date = datetime.strptime(goals["weight_cutoff_date"], "%Y-%m-%d").date()
-
-    if current and lbs_lost_week and lbs_lost_week > 0:
-        days_remaining = (target_date - today).days
-        projected_by_target = round(current - (lbs_lost_week * (days_remaining / 7)), 1)
+    target_date = None
+    target_date_str = cfg.get("goals", {}).get("weight_cutoff_date")
+    if target_date_str:
+        target_date = datetime.strptime(target_date_str, "%Y-%m-%d").date()
+        if current and lbs_lost_week and lbs_lost_week > 0:
+            days_remaining = (target_date - today).days
+            projected_by_target = round(current - (lbs_lost_week * (days_remaining / 7)), 1)
 
     return {
         "current": current,
@@ -88,7 +89,7 @@ def get_weight_trend(user_id: str, cfg: dict) -> dict:
         "lbs_lost_week": lbs_lost_week,
         "lbs_lost_month": lbs_lost_month,
         "projected_by_target": projected_by_target,
-        "target_date": target_date.isoformat(),
+        "target_date": target_date.isoformat() if target_date else None,
     }
 
 

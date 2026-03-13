@@ -8,7 +8,7 @@ def load_all_users() -> list[dict]:
     """Load all user configs from users/*.json, sorted by filename."""
     configs = []
     for fname in sorted(os.listdir(USERS_DIR)):
-        if fname.endswith(".json"):
+        if fname.endswith(".json") and not fname.startswith("_"):
             with open(os.path.join(USERS_DIR, fname)) as f:
                 cfg = json.load(f)
                 cfg["_user_id"] = fname[:-5]  # strip .json
