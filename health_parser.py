@@ -95,10 +95,13 @@ class HealthData:
                 sleep_wake_time = max(waketimes)
 
         def _num(val) -> float:
-            """Health Auto Export returns fields as either a plain number
-            or a dict like {"qty": 5.2, "units": "km"}. Unwrap either."""
+            """Health Auto Export returns workout fields as a plain number,
+            a dict like {"qty": 5.2, "units": "km"}, or a list of such dicts.
+            Unwrap any of these to a single float."""
             if val is None:
                 return 0.0
+            if isinstance(val, list):
+                return sum(_num(item) for item in val)
             if isinstance(val, dict):
                 return float(val.get("qty") or val.get("value") or 0)
             return float(val)
