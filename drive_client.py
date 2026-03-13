@@ -9,6 +9,7 @@ from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseDownload
 
 SCOPES = ["https://www.googleapis.com/auth/drive.readonly"]
+DAYS_TO_FETCH = 7
 
 
 def _get_credentials():
@@ -33,16 +34,43 @@ def _get_service():
     return build("drive", "v3", credentials=creds)
 
 
-def _find_folder_id(service, folder_name: str) -> str:
+def _find_folder_id(service, folder_name: str, parent_id: str = None) -> str:
+    """Find a folder by name, optionally scoped to a parent folder."""
+    parent_clause = f"and '{parent_id}' in parents " if parent_id else ""
     query = (
         f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' "
-        "and trashed = false"
+        f"{parent_clause}and trashed = false"
     )
     result = service.files().list(q=query, fields="files(id, name)").execute()
     files = result.get("files", [])
     if not files:
         raise FileNotFoundError(f"Folder '{folder_name}' not found in Google Drive.")
     return files[0]["id"]
+
+
+def _resolve_export_folder(service) -> str:
+    """
+    Resolve the folder containing daily export files.
+
+    Health Auto Export creates: "Health Auto Export" / "Health-exports"
+    GOOGLE_DRIVE_FOLDER_NAME can be overridden to point directly to the export folder.
+    Falls back to searching for the nested structure automatically.
+    """
+    folder_name = os.environ.get("GOOGLE_DRIVE_FOLDER_NAME", "")
+
+    if folder_name:
+        # Try direct lookup first
+        try:
+            folder_id = _find_folder_id(service, folder_name)
+            print(f"[Drive] Using folder: {folder_name}")
+            return folder_id
+        except FileNotFoundError:
+            pass
+
+    # Navigate the Health Auto Export nested structure
+    print("[Drive] Navigating Health Auto Export → Health-exports")
+    parent_id = _find_folder_id(service, "Health Auto Export")
+    return _find_folder_id(service, "Health-exports", parent_id=parent_id)
 
 
 def _list_export_files(service, folder_id: str) -> list:
@@ -88,7 +116,6 @@ def _extract_json_from_zip(zip_bytes: bytes) -> dict:
         if not json_names:
             raise ValueError("No JSON file found inside the ZIP export.")
 
-        # If multiple JSONs, pick the largest (most complete)
         if len(json_names) > 1:
             json_names.sort(key=lambda n: zf.getinfo(n).file_size, reverse=True)
             print(f"[Drive] ZIP contains {len(json_names)} JSON files — using largest: {json_names[0]}")
@@ -99,42 +126,73 @@ def _extract_json_from_zip(zip_bytes: bytes) -> dict:
             return json.loads(f.read().decode("utf-8"))
 
 
+def _load_export(service, f: dict) -> dict:
+    raw_bytes = _download_bytes(service, f["id"])
+    if f["name"].endswith(".zip") or "zip" in f["mimeType"]:
+        return _extract_json_from_zip(raw_bytes)
+    return json.loads(raw_bytes.decode("utf-8"))
+
+
+def _merge_daily_exports(exports: list) -> dict:
+    """
+    Merge multiple daily JSON exports into a single combined structure.
+
+    Each daily file has: {"data": {"metrics": [...], "workouts": [...]}}
+    We merge by combining each metric's data arrays and concatenating workouts.
+    health_parser.py already handles multiple entries per metric via latest()
+    and latest_day_sum(), so the merged structure gives rolling history.
+    """
+    merged_metrics: dict[str, dict] = {}  # metric name → {name, units, data: [...]}
+    merged_workouts: list = []
+
+    for export in exports:
+        data = export.get("data", export)
+        for metric in data.get("metrics", []):
+            name = metric["name"]
+            if name not in merged_metrics:
+                merged_metrics[name] = {"name": name, "units": metric.get("units", ""), "data": []}
+            merged_metrics[name]["data"].extend(metric.get("data", []))
+        merged_workouts.extend(data.get("workouts", []))
+
+    return {"data": {"metrics": list(merged_metrics.values()), "workouts": merged_workouts}}
+
+
 def get_latest_health_export() -> dict:
-    folder_name = os.environ.get("GOOGLE_DRIVE_FOLDER_NAME", "health-exports")
+    """
+    Fetch and merge the last DAYS_TO_FETCH daily export files.
+    Returns a single combined JSON structure for health_parser.py.
+    """
     service = _get_service()
-    folder_id = _find_folder_id(service, folder_name)
+    folder_id = _resolve_export_folder(service)
     files = _list_export_files(service, folder_id)
 
     if not files:
-        raise FileNotFoundError(
-            f"No export files (.zip or .json) found in Google Drive folder '{folder_name}'."
-        )
+        raise FileNotFoundError("No export files (.zip or .json) found in the health exports folder.")
 
-    latest = files[0]
-    print(f"[Drive] Found export: {latest['name']} ({latest['mimeType']}) — {latest['createdTime']}")
+    exports = []
+    for f in files[:DAYS_TO_FETCH]:
+        try:
+            print(f"[Drive] Fetching: {f['name']} ({f['createdTime']})")
+            exports.append(_load_export(service, f))
+        except Exception as e:
+            print(f"[Drive] Warning: could not process {f['name']}: {e}")
 
-    raw_bytes = _download_bytes(service, latest["id"])
+    if not exports:
+        raise FileNotFoundError("No valid export files could be loaded.")
 
-    if latest["name"].endswith(".zip") or "zip" in latest["mimeType"]:
-        return _extract_json_from_zip(raw_bytes)
-    else:
-        return json.loads(raw_bytes.decode("utf-8"))
+    print(f"[Drive] Merging {len(exports)} daily export(s)")
+    return _merge_daily_exports(exports)
 
 
 def get_health_exports_last_n_days(n: int) -> list:
-    folder_name = os.environ.get("GOOGLE_DRIVE_FOLDER_NAME", "health-exports")
     service = _get_service()
-    folder_id = _find_folder_id(service, folder_name)
+    folder_id = _resolve_export_folder(service)
     files = _list_export_files(service, folder_id)
 
     results = []
     for f in files[:n]:
         try:
-            raw_bytes = _download_bytes(service, f["id"])
-            if f["name"].endswith(".zip") or "zip" in f["mimeType"]:
-                results.append(_extract_json_from_zip(raw_bytes))
-            else:
-                results.append(json.loads(raw_bytes.decode("utf-8")))
+            results.append(_load_export(service, f))
         except Exception as e:
             print(f"Warning: could not process {f['name']}: {e}")
     return results

@@ -3,6 +3,19 @@ from typing import Optional
 from datetime import datetime
 
 MILES_TO_KM = 1.60934
+LBS_TO_KG = 0.453592
+
+
+def _weight_as_kg(metric: Optional[dict]) -> Optional[float]:
+    """Return weight in kg regardless of whether the export uses 'lb' or 'kg'."""
+    if not metric or not metric.get("data"):
+        return None
+    entries = sorted(metric["data"], key=lambda x: x.get("date", ""), reverse=True)
+    val = entries[0].get("qty")
+    if val is None:
+        return None
+    units = metric.get("units", "").lower()
+    return float(val) * LBS_TO_KG if units in ("lb", "lbs") else float(val)
 
 
 @dataclass
@@ -151,7 +164,7 @@ class HealthData:
             bmr_calories=latest("basal_energy_burned"),
             resting_hr=latest("resting_heart_rate"),
             hrv=latest("heart_rate_variability_sdnn"),
-            weight_kg=latest("weight_body_mass"),
+            weight_kg=_weight_as_kg(metrics.get("weight_body_mass")),
             body_fat_pct=latest("body_fat_percentage"),
             sleep_hours=sleep_hours,
             sleep_deep_minutes=sleep_deep_minutes,
