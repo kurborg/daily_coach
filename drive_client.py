@@ -75,19 +75,15 @@ def _resolve_export_folder(service) -> str:
 
 def _list_export_files(service, folder_id: str) -> list:
     """Return all .zip and .json files in the folder, newest first."""
-    query = (
-        f"'{folder_id}' in parents and trashed = false and ("
-        "mimeType = 'application/zip' or "
-        "mimeType = 'application/x-zip-compressed' or "
-        "mimeType = 'application/json'"
-        ")"
-    )
+    query = f"'{folder_id}' in parents and trashed = false"
     result = service.files().list(
         q=query,
         orderBy="createdTime desc",
         fields="files(id, name, createdTime, mimeType)",
     ).execute()
-    return result.get("files", [])
+    files = result.get("files", [])
+    # Filter client-side by extension — Drive often assigns text/plain to .json uploads
+    return [f for f in files if f["name"].endswith(".json") or f["name"].endswith(".zip")]
 
 
 def _download_bytes(service, file_id: str) -> bytes:
