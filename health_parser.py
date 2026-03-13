@@ -100,19 +100,33 @@ class HealthData:
             val = entries[0].get("qty")
             return float(val) if val is not None else None
 
+        # ── Reference date: latest day present in step_count ─────────────────
+        # All metrics are filtered to this date so stale data from older daily
+        # files in the 7-day merge doesn't bleed into today's report.
+        _ref_date: Optional[str] = None
+        _steps_metric = metrics.get("step_count")
+        if _steps_metric and _steps_metric.get("data"):
+            _entries = sorted(_steps_metric["data"], key=lambda x: x.get("date", ""), reverse=True)
+            _ref_date = _entries[0]["date"][:10]  # YYYY-MM-DD
+
         def latest_day_sum(metric_name: str) -> Optional[float]:
             """
-            Sum all entries for the most recent date.
+            Sum all entries for the reference date (most recent day in step_count).
             Required for minute-level metrics (steps, calories, distance) where
             each entry is a single minute's value, not a daily total.
             Also deduplicates nutrition data from multiple sources (e.g. MyFitnessPal).
+            Returns None if the metric has no entries on the reference date, preventing
+            stale data from older days in the 7-day merged export from bleeding through.
             """
             m = metrics.get(metric_name)
             if not m or not m.get("data"):
                 return None
-            entries = sorted(m["data"], key=lambda x: x.get("date", ""), reverse=True)
-            most_recent_date = entries[0]["date"][:10]  # YYYY-MM-DD
-            day_entries = [e for e in entries if e.get("date", "")[:10] == most_recent_date]
+            target_date = _ref_date
+            if target_date is None:
+                # Fallback: use this metric's own most-recent date
+                entries = sorted(m["data"], key=lambda x: x.get("date", ""), reverse=True)
+                target_date = entries[0]["date"][:10]
+            day_entries = [e for e in m["data"] if e.get("date", "")[:10] == target_date]
             vals = [e["qty"] for e in day_entries if e.get("qty") is not None]
             return round(sum(vals), 1) if vals else None
 
