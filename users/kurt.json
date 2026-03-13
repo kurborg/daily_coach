@@ -1,6 +1,8 @@
 {
   "folder_id": "",
   "folder_name": "Health-exports",
+  "workout_folder_id": "",
+  "workout_folder_name": "Workout-exports",
   "email": "kurborg@gmail.com",
 
   "profile": {
@@ -129,7 +131,7 @@
 
   "surgery": {
     "type": "Abdominal surgery",
-    "date": "2026-02-01",
+    "date": "2026-02-03",
     "notes": "recovery ongoing"
   },
 

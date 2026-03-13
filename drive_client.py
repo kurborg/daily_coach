@@ -53,26 +53,27 @@ def _resolve_export_folder(service, folder_id: str = "", folder_name: str = "") 
     Resolve the folder containing daily export files.
 
     If folder_id is given, return it immediately.
-    Otherwise try folder_name as a direct lookup, then fall back to navigating
-    the Health Auto Export nested structure: "Health Auto Export" / "Health-exports".
+    Otherwise try folder_name as a direct lookup, then fall back to searching
+    under the "Health Auto Export" parent folder (handles any subfolder name).
     """
     if folder_id:
         print(f"[Drive] Using folder_id: {folder_id}")
         return folder_id
 
-    if folder_name:
-        # Try direct lookup first
-        try:
-            fid = _find_folder_id(service, folder_name)
-            print(f"[Drive] Using folder: {folder_name}")
-            return fid
-        except FileNotFoundError:
-            pass
+    target = folder_name or "Health-exports"
 
-    # Navigate the Health Auto Export nested structure
-    print("[Drive] Navigating Health Auto Export → Health-exports")
+    # Try direct (root-level) lookup first
+    try:
+        fid = _find_folder_id(service, target)
+        print(f"[Drive] Using folder: {target}")
+        return fid
+    except FileNotFoundError:
+        pass
+
+    # Fall back to navigating under "Health Auto Export"
+    print(f"[Drive] Navigating Health Auto Export → {target}")
     parent_id = _find_folder_id(service, "Health Auto Export")
-    return _find_folder_id(service, "Health-exports", parent_id=parent_id)
+    return _find_folder_id(service, target, parent_id=parent_id)
 
 
 def _list_export_files(service, folder_id: str) -> list:
@@ -180,6 +181,33 @@ def get_latest_health_export(folder_id: str = "", folder_name: str = "") -> dict
 
     print(f"[Drive] Merging {len(exports)} daily export(s)")
     return _merge_daily_exports(exports)
+
+
+def get_latest_workout_export(folder_id: str = "", folder_name: str = "") -> list:
+    """
+    Fetch and merge workouts from the last DAYS_TO_FETCH workout export files.
+    Returns a flat list of workout objects ready to inject into a health export.
+    """
+    service = _get_service()
+    resolved_folder_id = _resolve_export_folder(service, folder_id=folder_id, folder_name=folder_name)
+    files = _list_export_files(service, resolved_folder_id)
+
+    if not files:
+        print("[Drive] No workout export files found.")
+        return []
+
+    workouts = []
+    for f in files[:DAYS_TO_FETCH]:
+        try:
+            print(f"[Drive] Fetching workout file: {f['name']}")
+            export = _load_export(service, f)
+            data = export.get("data", export)
+            workouts.extend(data.get("workouts", []))
+        except Exception as e:
+            print(f"[Drive] Warning: could not process {f['name']}: {e}")
+
+    print(f"[Drive] Found {len(workouts)} workout(s) from workout exports")
+    return workouts
 
 
 def get_health_exports_last_n_days(n: int, folder_id: str = "", folder_name: str = "") -> list:

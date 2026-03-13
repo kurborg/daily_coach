@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from config_loader import load_all_users, load_user, resolve_ref
-from drive_client import get_latest_health_export
+from drive_client import get_latest_health_export, get_latest_workout_export
 from health_parser import HealthData
 from trend_tracker import save_daily_summary, get_rolling_averages, get_weight_trend, get_streak
 from coach_prompt import build_coaching_prompt
@@ -26,6 +26,16 @@ def run_for_user(cfg: dict, dry_run: bool = False):
         folder_id=cfg.get("folder_id", ""),
         folder_name=cfg.get("folder_name", ""),
     )
+
+    # 1b. Fetch workouts from separate folder and inject if configured
+    if cfg.get("workout_folder_name") or cfg.get("workout_folder_id"):
+        workouts = get_latest_workout_export(
+            folder_id=cfg.get("workout_folder_id", ""),
+            folder_name=cfg.get("workout_folder_name", ""),
+        )
+        if workouts:
+            raw_json["data"]["workouts"] = workouts
+            print(f"[Coach] Injected {len(workouts)} workout(s) from workout folder")
 
     # 2. Parse
     health = HealthData.parse(raw_json)
