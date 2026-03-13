@@ -100,14 +100,19 @@ class HealthData:
             val = entries[0].get("qty")
             return float(val) if val is not None else None
 
-        # ── Reference date: latest day present in step_count ─────────────────
-        # All metrics are filtered to this date so stale data from older daily
-        # files in the 7-day merge doesn't bleed into today's report.
+        # ── Reference date: most complete day in step_count ──────────────────
+        # With frequent exports (e.g. every 5 min), today's partial file may be
+        # the most recent. Pick the date with the most step entries instead —
+        # a full day has many more intervals than a partial day in progress.
         _ref_date: Optional[str] = None
         _steps_metric = metrics.get("step_count")
         if _steps_metric and _steps_metric.get("data"):
-            _entries = sorted(_steps_metric["data"], key=lambda x: x.get("date", ""), reverse=True)
-            _ref_date = _entries[0]["date"][:10]  # YYYY-MM-DD
+            from collections import Counter
+            _date_counts: Counter = Counter(
+                e["date"][:10] for e in _steps_metric["data"] if e.get("date")
+            )
+            # Pick the date with the most entries; break ties by choosing the most recent
+            _ref_date = max(_date_counts, key=lambda d: (_date_counts[d], d))
 
         def latest_day_sum(metric_name: str) -> Optional[float]:
             """
