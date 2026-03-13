@@ -4,6 +4,7 @@ from datetime import datetime
 
 LBS_TO_KG = 0.453592
 METERS_TO_MILES = 0.000621371
+KM_TO_MILES = METERS_TO_MILES * 1000
 
 
 def _weight_as_kg(metric: Optional[dict]) -> Optional[float]:
@@ -163,10 +164,12 @@ class HealthData:
             energy = _qty(w.get("activeEnergyBurned") or w.get("activeEnergy"))
             dist_raw = w.get("distance")
             dist_val = _qty(dist_raw)
-            # Workouts store distance in miles; convert meters if needed
+            # Convert workout distance to miles based on reported units
             if isinstance(dist_raw, dict):
                 units = dist_raw.get("units", "mi")
-                if units == "m":
+                if units == "km":
+                    dist_mi = round(dist_val * KM_TO_MILES, 2)
+                elif units == "m":
                     dist_mi = round(dist_val * METERS_TO_MILES, 2)
                 else:
                     dist_mi = round(dist_val, 2)  # already miles
