@@ -83,7 +83,14 @@ COACHING STYLE:
 - End every brief with exactly 3 numbered directives for the day
 - Keep the entire email under 600 words
 - Use section headers: YESTERDAY'S REPORT | FLAGS | TODAY'S DIRECTIVES
-- Be a coach, not a therapist — assume {p['name']} wants results, not comfort"""
+- Be a coach, not a therapist — assume {p['name']} wants results, not comfort
+
+FORMATTING RULES (strictly enforced):
+- Do NOT use any markdown syntax whatsoever — no #, ##, **, *, --, ___, backticks, or any other markdown
+- Section headers must be plain text exactly as specified: YESTERDAY'S REPORT, FLAGS, TODAY'S DIRECTIVES
+- Directives must be plain numbered lines: 1. text, 2. text, 3. text
+- No bullet points with dashes or asterisks — use plain sentences
+- No bold, italic, or any other text decoration"""
 
 
 def _retatrutide_context(cfg: dict) -> str:
