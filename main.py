@@ -1,10 +1,10 @@
 import argparse
-import sys
 from datetime import date
 from dotenv import load_dotenv
 
 load_dotenv()
 
+from config_loader import load_all_users, load_user, resolve_ref
 from drive_client import get_latest_health_export
 from health_parser import HealthData
 from trend_tracker import save_daily_summary, get_rolling_averages, get_weight_trend, get_streak
@@ -13,85 +13,98 @@ from anthropic_client import get_coaching_brief
 from email_client import send_coaching_email
 
 
-def run_daily_coaching(dry_run: bool = False):
+def run_for_user(cfg: dict, dry_run: bool = False):
+    user_id = cfg["_user_id"]
+    name = cfg["profile"]["name"]
     today_str = date.today().isoformat()
-    print(f"[Coach] Starting daily coaching pipeline for {today_str}")
+    date_str = date.today().strftime("%A, %B %d, %Y")
 
-    # 1. Fetch latest health export from Google Drive
-    print("[Coach] Fetching health export from Google Drive...")
-    raw_json = get_latest_health_export()
+    print(f"[Coach] ── {name} ──────────────────────────")
 
-    # 2. Parse into HealthData
-    print("[Coach] Parsing health data...")
+    # 1. Fetch health data
+    raw_json = get_latest_health_export(
+        folder_id=cfg.get("folder_id", ""),
+        folder_name=cfg.get("folder_name", ""),
+    )
+
+    # 2. Parse
     health = HealthData.parse(raw_json)
     summary_dict = health.to_summary_dict()
     coaching_str = health.to_coaching_string()
 
-    # 3. Save today's summary to history
-    save_daily_summary(today_str, summary_dict)
+    # 3. Save history
+    save_daily_summary(today_str, summary_dict, user_id=user_id)
 
-    # 4. Get rolling averages
-    rolling_avgs = get_rolling_averages(days=7)
+    # 4. Rolling averages
+    rolling_avgs = get_rolling_averages(user_id=user_id, days=7)
 
-    # 5. Get weight trend
-    weight_trend = get_weight_trend()
+    # 5. Weight trend
+    weight_trend = get_weight_trend(user_id=user_id, cfg=cfg)
 
-    # 6. Get streaks
-    streaks = {
-        "protein": get_streak("protein_g", 200, higher_is_better=True),
-        "sleep": get_streak("sleep_hours", 7.5, higher_is_better=True),
-        "steps": get_streak("steps", 10000, higher_is_better=True),
-    }
+    # 6. Streaks — driven by cfg["streaks"]
+    streaks = {}
+    for s in cfg.get("streaks", []):
+        target = resolve_ref(cfg, s["target_ref"])
+        streaks[s["metric"]] = get_streak(
+            s["metric"], target,
+            user_id=user_id,
+            higher_is_better=s.get("higher_is_better", True),
+        )
 
-    # 7. Calculate retatrutide context (done inside coach_prompt)
-    context = ""
-
-    # 8. Build coaching prompt
+    # 7. Build prompt
     system_prompt, user_message = build_coaching_prompt(
         health_summary=coaching_str,
         rolling_averages=rolling_avgs,
         weight_trend=weight_trend,
         streaks=streaks,
-        context=context,
+        cfg=cfg,
     )
 
-    # 9. Call Claude API
-    print("[Coach] Requesting coaching brief from Claude...")
+    # 8. Call Claude
+    print(f"[Coach] Requesting brief from Claude...")
     coaching_brief = get_coaching_brief(system_prompt, user_message)
-
-    date_str = date.today().strftime("%A, %B %d, %Y")
 
     if dry_run:
         print("\n" + "=" * 60)
-        print("DRY RUN — Email would be sent with this content:")
+        print(f"DRY RUN — {name} — {date_str}")
         print("=" * 60)
-        print(f"Subject: Daily Coaching Brief — {date_str}")
-        print()
         print(coaching_brief)
         print("=" * 60)
         return
 
-    # 10. Send email
-    print("[Coach] Sending coaching email...")
+    # 9. Send email
     send_coaching_email(
         coaching_brief_text=coaching_brief,
         date_str=date_str,
         metrics_summary=summary_dict,
+        to_email=cfg["email"],
+        cfg=cfg,
     )
-
-    print(f"[Coach] ✓ Done — {date_str}")
+    print(f"[Coach] ✓ Done — {name}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="AI Fitness Coach — Daily Coaching Pipeline")
-    parser.add_argument("--test", action="store_true", help="Run pipeline once and exit")
-    parser.add_argument("--dry-run", action="store_true", help="Run pipeline but print email instead of sending")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--user", help="Run for a single user_id only")
     args = parser.parse_args()
 
-    if args.dry_run:
-        run_daily_coaching(dry_run=True)
+    today_str = date.today().isoformat()
+    print(f"[Coach] Starting daily coaching pipeline for {today_str}")
+
+    if args.user:
+        users = [load_user(args.user)]
     else:
-        run_daily_coaching(dry_run=False)
+        users = load_all_users()
+
+    print(f"[Coach] {len(users)} user(s) to process")
+
+    for cfg in users:
+        try:
+            run_for_user(cfg, dry_run=args.dry_run)
+        except Exception as e:
+            print(f"[Coach] ERROR for {cfg.get('profile', {}).get('name', cfg['_user_id'])}: {e}")
+            import traceback; traceback.print_exc()
 
 
 if __name__ == "__main__":

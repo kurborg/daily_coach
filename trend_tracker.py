@@ -2,33 +2,36 @@ import json
 import os
 from datetime import datetime, date, timedelta
 from typing import Optional
-from config_loader import get_goals
-
-HISTORY_PATH = os.path.join(os.path.dirname(__file__), "data", "history.json")
 
 
-def _load_history() -> dict:
-    os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
-    if not os.path.exists(HISTORY_PATH):
+def _history_path(user_id: str) -> str:
+    return os.path.join(os.path.dirname(__file__), "data", user_id, "history.json")
+
+
+def _load_history(user_id: str) -> dict:
+    path = _history_path(user_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if not os.path.exists(path):
         return {}
-    with open(HISTORY_PATH, "r") as f:
+    with open(path) as f:
         return json.load(f)
 
 
-def _save_history(history: dict):
-    os.makedirs(os.path.dirname(HISTORY_PATH), exist_ok=True)
-    with open(HISTORY_PATH, "w") as f:
+def _save_history(user_id: str, history: dict):
+    path = _history_path(user_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w") as f:
         json.dump(history, f, indent=2, default=str)
 
 
-def save_daily_summary(date_str: str, health_data_dict: dict):
-    history = _load_history()
+def save_daily_summary(date_str: str, health_data_dict: dict, user_id: str):
+    history = _load_history(user_id)
     history[date_str] = health_data_dict
-    _save_history(history)
+    _save_history(user_id, history)
 
 
-def _get_recent_entries(days: int) -> list:
-    history = _load_history()
+def _get_recent_entries(user_id: str, days: int) -> list:
+    history = _load_history(user_id)
     today = date.today()
     entries = []
     for i in range(days):
@@ -39,11 +42,10 @@ def _get_recent_entries(days: int) -> list:
     return entries
 
 
-def get_rolling_averages(days: int = 7) -> dict:
-    entries = _get_recent_entries(days)
+def get_rolling_averages(user_id: str, days: int = 7) -> dict:
+    entries = _get_recent_entries(user_id, days)
     if not entries:
         return {}
-
     metrics = ["steps", "active_calories", "resting_hr", "sleep_hours",
                "protein_g", "calories_consumed", "weight_lbs"]
     averages = {}
@@ -53,8 +55,8 @@ def get_rolling_averages(days: int = 7) -> dict:
     return averages
 
 
-def get_weight_trend() -> dict:
-    history = _load_history()
+def get_weight_trend(user_id: str, cfg: dict) -> dict:
+    history = _load_history(user_id)
     today = date.today()
 
     def weight_on(d: date) -> Optional[float]:
@@ -68,23 +70,16 @@ def get_weight_trend() -> dict:
     week_ago = weight_on(today - timedelta(days=8))
     month_ago = weight_on(today - timedelta(days=31))
 
-    lbs_lost_week = None
-    lbs_lost_month = None
+    lbs_lost_week = round(week_ago - current, 1) if current and week_ago else None
+    lbs_lost_month = round(month_ago - current, 1) if current and month_ago else None
     projected_by_target = None
 
-    if current is not None and week_ago is not None:
-        lbs_lost_week = round(week_ago - current, 1)
-
-    if current is not None and month_ago is not None:
-        lbs_lost_month = round(month_ago - current, 1)
-
-    goals = get_goals()
+    goals = cfg["goals"]
     target_date = datetime.strptime(goals["weight_cutoff_date"], "%Y-%m-%d").date()
 
-    if current is not None and lbs_lost_week is not None and lbs_lost_week > 0:
+    if current and lbs_lost_week and lbs_lost_week > 0:
         days_remaining = (target_date - today).days
-        weeks_remaining = days_remaining / 7
-        projected_by_target = round(current - (lbs_lost_week * weeks_remaining), 1)
+        projected_by_target = round(current - (lbs_lost_week * (days_remaining / 7)), 1)
 
     return {
         "current": current,
@@ -97,8 +92,8 @@ def get_weight_trend() -> dict:
     }
 
 
-def get_streak(metric: str, target: float, higher_is_better: bool = True) -> int:
-    history = _load_history()
+def get_streak(metric: str, target: float, user_id: str, higher_is_better: bool = True) -> int:
+    history = _load_history(user_id)
     today = date.today()
     streak = 0
     for i in range(1, 365):

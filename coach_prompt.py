@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from config_loader import get_config
+from config_loader import resolve_ref
 
 
 def _days_until(d: date) -> int:
@@ -112,9 +112,9 @@ def build_coaching_prompt(
     rolling_averages: dict,
     weight_trend: dict,
     streaks: dict,
+    cfg: dict,
     context: str = "",
 ) -> tuple[str, str]:
-    cfg = get_config()
     t = cfg["daily_targets"]
     g = cfg["goals"]
     today = date.today()
@@ -139,6 +139,16 @@ def build_coaching_prompt(
     def fmt_wt(key: str) -> str:
         val = weight_trend.get(key)
         return f"{val:.1f} lbs" if val is not None else "N/A"
+
+    # Build streak lines from cfg["streaks"]
+    streak_lines = []
+    for s in cfg.get("streaks", []):
+        target = resolve_ref(cfg, s["target_ref"])
+        count = streaks.get(s["metric"], 0)
+        unit = s.get("unit", "")
+        label = s["label"]
+        streak_lines.append(f"  {label} ≥{target}{unit}: {count} days")
+    streaks_str = "\n".join(streak_lines) if streak_lines else "  No streak targets configured"
 
     user_message = f"""Today: {today.strftime('%A, %B %d, %Y')}
 {events_str}
@@ -165,8 +175,6 @@ WEIGHT TREND:
   Projected weight by {g['weight_cutoff_date']}: {fmt_wt('projected_by_target')}
 
 CURRENT STREAKS:
-  Protein ≥{t['protein_g']}g: {streaks.get('protein', 0)} days
-  Sleep ≥{t['sleep_hours']}hrs: {streaks.get('sleep', 0)} days
-  Steps ≥{t['steps']:,}: {streaks.get('steps', 0)} days"""
+{streaks_str}"""
 
     return system_prompt.strip(), user_message.strip()

@@ -4,7 +4,7 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from datetime import date, datetime
-from config_loader import get_config, get_targets, get_events
+from config_loader import resolve_ref
 
 # ── Color Palette ─────────────────────────────────────────────────────────────
 BG      = "#0d0d1a"
@@ -223,21 +223,53 @@ def _format_brief_html(coaching_brief_text: str) -> str:
     return "\n".join(html_lines)
 
 
-def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) -> str:
-    cfg = get_config()
-    t = get_targets()
-    events = get_events()
+def _resolve_target(cfg: dict, card: dict, metrics_summary: dict) -> float:
+    """Resolve card target, using training-day override if applicable."""
+    if card.get("training_day_target_ref") and metrics_summary.get("workouts"):
+        return resolve_ref(cfg, card["training_day_target_ref"])
+    return resolve_ref(cfg, card["target_ref"])
+
+
+def _render_card(card: dict, cfg: dict, metrics_summary: dict) -> str:
+    """Render one metric card from config."""
+    value = metrics_summary.get(card["data_key"])
+    target = _resolve_target(cfg, card, metrics_summary)
+    return _metric_card(
+        card["emoji"], card["label"], value,
+        card.get("unit", ""), target,
+        card.get("higher_is_better", True),
+        card.get("decimals", 0),
+    )
+
+
+def _build_metric_grid(cfg: dict, metrics_summary: dict) -> str:
+    """Build the 2-column metric grid from cfg['metric_cards']."""
+    cards = cfg.get("metric_cards", [])
+    rows = []
+    for i in range(0, len(cards), 2):
+        left = _render_card(cards[i], cfg, metrics_summary)
+        if i + 1 < len(cards):
+            right = _render_card(cards[i + 1], cfg, metrics_summary)
+        else:
+            right = '<td width="48%"></td>'
+        rows.append(f"""          <tr>
+            {left}
+            <td width="4%"></td>
+            {right}
+          </tr>
+          <tr><td colspan="3" style="height:10px;"></td></tr>""")
+    return "\n".join(rows)
+
+
+def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict, cfg: dict) -> str:
+    events = cfg["events"]
+    goals = cfg["goals"]
     name = cfg["profile"]["name"]
 
     quote_text, quote_author = _daily_pick(MOTIVATIONAL_QUOTES)
     verse_text, verse_ref = _daily_pick(BIBLE_VERSES)
 
     m = metrics_summary
-
-    # Training day vs rest day calorie target
-    worked_out = bool(m.get("workouts"))
-    cal_target = t["calories_training_day"] if worked_out else t["calories_rest_day"]
-    cal_label = "Cal Consumed" + (" 🏋️" if worked_out else " 🛌")
 
     # Build race countdown cards from config
     event_cards = []
@@ -378,29 +410,7 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) 
           📊 &nbsp;Yesterday's Numbers
         </div>
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tr>
-            {_metric_card("⚖️", "Weight",     m.get("weight_lbs"),                     " lbs", cfg["goals"]["weight_target_lbs"], higher_is_better=False, decimals=1)}
-            <td width="4%"></td>
-            {_metric_card("🦶", "Steps",      m.get("steps"),                           "",     t["steps"],           higher_is_better=True)}
-          </tr>
-          <tr><td colspan="3" style="height:10px;"></td></tr>
-          <tr>
-            {_metric_card("😴", "Sleep",      m.get("sleep_hours"),                    " hrs", t["sleep_hours"],     higher_is_better=True,  decimals=1)}
-            <td width="4%"></td>
-            {_metric_card("🥩", "Protein",    m.get("protein_g"),                      "g",    t["protein_g"],       higher_is_better=True)}
-          </tr>
-          <tr><td colspan="3" style="height:10px;"></td></tr>
-          <tr>
-            {_metric_card("🔥", cal_label,    m.get("calories_consumed"),              " kcal",cal_target,           higher_is_better=True)}
-            <td width="4%"></td>
-            {_metric_card("❤️", "Resting HR", m.get("resting_hr"),                    " bpm", t["resting_hr_max"],  higher_is_better=False)}
-          </tr>
-          <tr><td colspan="3" style="height:10px;"></td></tr>
-          <tr>
-            {_metric_card("🧠", "HRV",        m.get("hrv"),                            " ms",  t["hrv_min"],         higher_is_better=True,  decimals=1)}
-            <td width="4%"></td>
-            {_metric_card("🚴", "Cycling",    m.get("cycling_distance_km"),            " km",  t["distance_km"],     higher_is_better=True,  decimals=1)}
-          </tr>
+{_build_metric_grid(cfg, m)}
         </table>
       </td>
     </tr>
@@ -424,7 +434,7 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) 
     <tr>
       <td align="center" style="padding:16px 0 8px;">
         <div style="font-size:11px;color:{MUTED};line-height:1.8;">
-          Powered by Claude · Built for Kurt<br>
+          Powered by Claude · Built for {name}<br>
           <span style="color:{BORDER};">——————————————</span><br>
           <span style="font-size:10px;">Data from Apple Health via Health Auto Export</span>
         </div>
@@ -438,17 +448,9 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict) 
 </html>"""
 
 
-def _build_plain_text(coaching_brief_text: str, date_str: str, metrics_summary: dict) -> str:
-    cfg = get_config()
-    t = get_targets()
-    events = get_events()
+def _build_plain_text(coaching_brief_text: str, date_str: str, metrics_summary: dict, cfg: dict) -> str:
+    events = cfg["events"]
     name = cfg["profile"]["name"]
-
-    def fmt(key, unit="", decimals=0):
-        v = metrics_summary.get(key)
-        if v is None:
-            return "N/A"
-        return f"{v:.{decimals}f}{unit}" if decimals else f"{int(v)}{unit}"
 
     quote_text, quote_author = _daily_pick(MOTIVATIONAL_QUOTES)
     verse_text, verse_ref = _daily_pick(BIBLE_VERSES)
@@ -461,6 +463,20 @@ def _build_plain_text(coaching_brief_text: str, date_str: str, metrics_summary: 
         else:
             event_lines.append(f"    {e['emoji']}  {e['short']}: ongoing")
     events_str = "\n".join(event_lines)
+
+    metric_lines = []
+    for card in cfg.get("metric_cards", []):
+        v = metrics_summary.get(card["data_key"])
+        target = _resolve_target(cfg, card, metrics_summary)
+        decimals = card.get("decimals", 0)
+        if v is None:
+            val_str = "N/A"
+        elif decimals:
+            val_str = f"{v:.{decimals}f}{card.get('unit','')}"
+        else:
+            val_str = f"{int(v)}{card.get('unit','')}"
+        metric_lines.append(f"    {card['emoji']}  {card['label']}: {val_str}  (goal: {target})")
+    metrics_block = "\n".join(metric_lines)
 
     return f"""{name.upper()}'S DAILY COACHING BRIEF — {date_str}
 {'=' * 56}
@@ -477,13 +493,7 @@ def _build_plain_text(coaching_brief_text: str, date_str: str, metrics_summary: 
 
 {'=' * 56}
 📊  YESTERDAY'S NUMBERS
-    ⚖️  Weight:     {fmt('weight_lbs', ' lbs', 1)}  (goal: ≤{cfg['goals']['weight_target_lbs']})
-    🦶  Steps:      {fmt('steps')}  (goal: {t['steps']:,})
-    😴  Sleep:      {fmt('sleep_hours', ' hrs', 1)}  (goal: {t['sleep_hours']})
-    🥩  Protein:    {fmt('protein_g', 'g')}  (goal: {t['protein_g']}g)
-    🔥  Calories:   {fmt('calories_consumed', ' kcal')}
-    ❤️  Resting HR: {fmt('resting_hr', ' bpm')}
-    🧠  HRV:        {fmt('hrv', ' ms', 1)}
+{metrics_block}
 
 {'=' * 56}
 {coaching_brief_text}
@@ -497,9 +507,10 @@ def send_coaching_email(
     coaching_brief_text: str,
     date_str: str,
     metrics_summary: dict,
+    to_email: str,
+    cfg: dict,
 ):
-    cfg = get_config()
-    events = get_events()
+    events = cfg["events"]
     name = cfg["profile"]["name"]
 
     first_event = next((e for e in events if e["date"]), None)
@@ -511,11 +522,10 @@ def send_coaching_email(
 
     subject = f"💪 {name}'s Brief — {date_str}{countdown_str}"
 
-    html  = _build_html(coaching_brief_text, date_str, metrics_summary)
-    plain = _build_plain_text(coaching_brief_text, date_str, metrics_summary)
+    html  = _build_html(coaching_brief_text, date_str, metrics_summary, cfg)
+    plain = _build_plain_text(coaching_brief_text, date_str, metrics_summary, cfg)
 
     from_email = os.environ["FROM_EMAIL"]
-    to_email   = os.environ["TO_EMAIL"]
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject

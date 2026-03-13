@@ -48,22 +48,24 @@ def _find_folder_id(service, folder_name: str, parent_id: str = None) -> str:
     return files[0]["id"]
 
 
-def _resolve_export_folder(service) -> str:
+def _resolve_export_folder(service, folder_id: str = "", folder_name: str = "") -> str:
     """
     Resolve the folder containing daily export files.
 
-    Health Auto Export creates: "Health Auto Export" / "Health-exports"
-    GOOGLE_DRIVE_FOLDER_NAME can be overridden to point directly to the export folder.
-    Falls back to searching for the nested structure automatically.
+    If folder_id is given, return it immediately.
+    Otherwise try folder_name as a direct lookup, then fall back to navigating
+    the Health Auto Export nested structure: "Health Auto Export" / "Health-exports".
     """
-    folder_name = os.environ.get("GOOGLE_DRIVE_FOLDER_NAME", "")
+    if folder_id:
+        print(f"[Drive] Using folder_id: {folder_id}")
+        return folder_id
 
     if folder_name:
         # Try direct lookup first
         try:
-            folder_id = _find_folder_id(service, folder_name)
+            fid = _find_folder_id(service, folder_name)
             print(f"[Drive] Using folder: {folder_name}")
-            return folder_id
+            return fid
         except FileNotFoundError:
             pass
 
@@ -153,14 +155,14 @@ def _merge_daily_exports(exports: list) -> dict:
     return {"data": {"metrics": list(merged_metrics.values()), "workouts": merged_workouts}}
 
 
-def get_latest_health_export() -> dict:
+def get_latest_health_export(folder_id: str = "", folder_name: str = "") -> dict:
     """
     Fetch and merge the last DAYS_TO_FETCH daily export files.
     Returns a single combined JSON structure for health_parser.py.
     """
     service = _get_service()
-    folder_id = _resolve_export_folder(service)
-    files = _list_export_files(service, folder_id)
+    resolved_folder_id = _resolve_export_folder(service, folder_id=folder_id, folder_name=folder_name)
+    files = _list_export_files(service, resolved_folder_id)
 
     if not files:
         raise FileNotFoundError("No export files (.zip or .json) found in the health exports folder.")
@@ -180,10 +182,10 @@ def get_latest_health_export() -> dict:
     return _merge_daily_exports(exports)
 
 
-def get_health_exports_last_n_days(n: int) -> list:
+def get_health_exports_last_n_days(n: int, folder_id: str = "", folder_name: str = "") -> list:
     service = _get_service()
-    folder_id = _resolve_export_folder(service)
-    files = _list_export_files(service, folder_id)
+    resolved_folder_id = _resolve_export_folder(service, folder_id=folder_id, folder_name=folder_name)
+    files = _list_export_files(service, resolved_folder_id)
 
     results = []
     for f in files[:n]:

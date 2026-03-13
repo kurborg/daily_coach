@@ -25,7 +25,7 @@ jobs:
       - name: Restore health history cache
         uses: actions/cache@v4
         with:
-          path: data/history.json
+          path: data/
           key: health-history-${{ github.run_id }}
           restore-keys: |
             health-history-
@@ -34,14 +34,12 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_SERVICE_ACCOUNT_BASE64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_BASE64 }}
-          GOOGLE_DRIVE_FOLDER_NAME: ${{ vars.GOOGLE_DRIVE_FOLDER_NAME }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           FROM_EMAIL: ${{ vars.FROM_EMAIL }}
-          TO_EMAIL: ${{ vars.TO_EMAIL }}
         run: python main.py
 
       - name: Save updated health history cache
         uses: actions/cache@v4
         with:
-          path: data/history.json
+          path: data/
           key: health-history-${{ github.run_id }}

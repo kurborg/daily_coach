@@ -1,0 +1,151 @@
+{
+  "folder_id": "",
+  "folder_name": "Health-exports",
+  "email": "kurborg@gmail.com",
+
+  "profile": {
+    "name": "Kurt",
+    "age": 28,
+    "height_ft": 6,
+    "height_in": 2
+  },
+
+  "goals": {
+    "weight_target_lbs": 200,
+    "body_fat_target_pct": 8,
+    "weight_cutoff_date": "2026-06-15"
+  },
+
+  "daily_targets": {
+    "protein_g": 200,
+    "calories_rest_day": 2200,
+    "calories_training_day": 2600,
+    "fat_g_min": 60,
+    "sleep_hours": 7.5,
+    "steps": 10000,
+    "active_calories": 400,
+    "hrv_min": 50,
+    "resting_hr_max": 60,
+    "distance_km": 5
+  },
+
+  "events": [
+    {
+      "name": "Spartan Stadium Race",
+      "short": "Spartan",
+      "emoji": "🏟️",
+      "date": "2026-05-09"
+    },
+    {
+      "name": "Triathlon",
+      "short": "Triathlon",
+      "emoji": "🏊",
+      "date": "2026-08-01"
+    },
+    {
+      "name": "Hyrox",
+      "short": "Hyrox",
+      "emoji": "⚡",
+      "date": null
+    }
+  ],
+
+  "compounds": [
+    {
+      "name": "Retatrutide",
+      "start_date": "2026-03-09",
+      "end_date": null,
+      "dose_schedule": [
+        {"weeks_start": 0, "weeks_end": 3,  "dose": "1mg"},
+        {"weeks_start": 4, "weeks_end": 7,  "dose": "2mg"},
+        {"weeks_start": 8, "weeks_end": 999, "dose": "escalating per protocol"}
+      ],
+      "notes": "weekly injection, fat loss"
+    },
+    {
+      "name": "BPC-157 & TB-500",
+      "start_date": null,
+      "end_date": "2026-05-01",
+      "dose_schedule": [],
+      "notes": "recovery peptides, cycling through May 2026"
+    },
+    {
+      "name": "CJC-1295 & Ipamorelin",
+      "start_date": null,
+      "end_date": "2026-05-01",
+      "dose_schedule": [],
+      "notes": "GH secretagogues, pre-sleep, cycling through May 2026"
+    },
+    {
+      "name": "GHK-Cu",
+      "start_date": null,
+      "end_date": "2026-04-01",
+      "dose_schedule": [],
+      "notes": "through April 2026"
+    }
+  ],
+
+  "bloodwork": [
+    {
+      "marker": "hs-CRP",
+      "value": "8.1 mg/L",
+      "date": "2025-12-01",
+      "flag": "critically elevated — inflammation, likely surgical; should be declining"
+    },
+    {
+      "marker": "Lp(a)",
+      "value": "179 nmol/L",
+      "date": "2025-12-01",
+      "flag": "genetic cardiovascular risk — non-modifiable; cardiologist needed"
+    },
+    {
+      "marker": "Urine microalbumin",
+      "value": "7.8 mg/dL",
+      "date": "2025-12-01",
+      "flag": "kidney stress marker — monitor trends"
+    },
+    {
+      "marker": "Testosterone",
+      "value": "452 ng/dL",
+      "date": "2025-12-01",
+      "flag": "lower end of optimal; fat intake floors protect this"
+    },
+    {
+      "marker": "Hemoglobin",
+      "value": "12.4 g/dL",
+      "date": "2025-12-01",
+      "flag": "mild anemia — inflammation-related, should improve with recovery"
+    }
+  ],
+
+  "flags": {
+    "max_daily_deficit_kcal": 800,
+    "protein_red_alert_g": 150,
+    "hr_spike_bpm_above_avg": 5,
+    "max_weekly_weight_loss_lbs": 2.5,
+    "late_training_cutoff_hour": 24
+  },
+
+  "surgery": {
+    "type": "Abdominal surgery",
+    "date": "2026-02-01",
+    "notes": "recovery ongoing"
+  },
+
+  "metric_cards": [
+    {"data_key": "weight_lbs",         "label": "Weight",     "emoji": "⚖️", "unit": " lbs",  "target_ref": "goals.weight_target_lbs",         "higher_is_better": false, "decimals": 1},
+    {"data_key": "steps",              "label": "Steps",      "emoji": "🦶", "unit": "",      "target_ref": "daily_targets.steps",             "higher_is_better": true,  "decimals": 0},
+    {"data_key": "sleep_hours",        "label": "Sleep",      "emoji": "😴", "unit": " hrs",  "target_ref": "daily_targets.sleep_hours",       "higher_is_better": true,  "decimals": 1},
+    {"data_key": "protein_g",          "label": "Protein",    "emoji": "🥩", "unit": "g",     "target_ref": "daily_targets.protein_g",         "higher_is_better": true,  "decimals": 0},
+    {"data_key": "calories_consumed",  "label": "Calories",   "emoji": "🔥", "unit": " kcal", "target_ref": "daily_targets.calories_rest_day", "training_day_target_ref": "daily_targets.calories_training_day", "higher_is_better": true, "decimals": 0},
+    {"data_key": "resting_hr",         "label": "Resting HR", "emoji": "❤️", "unit": " bpm",  "target_ref": "daily_targets.resting_hr_max",    "higher_is_better": false, "decimals": 0},
+    {"data_key": "hrv",                "label": "HRV",        "emoji": "🧠", "unit": " ms",   "target_ref": "daily_targets.hrv_min",           "higher_is_better": true,  "decimals": 1},
+    {"data_key": "cycling_distance_km","label": "Cycling",    "emoji": "🚴", "unit": " km",   "target_ref": "daily_targets.distance_km",       "higher_is_better": true,  "decimals": 1}
+  ],
+
+  "streaks": [
+    {"metric": "protein_g",    "label": "Protein", "unit": "g",   "target_ref": "daily_targets.protein_g",   "higher_is_better": true},
+    {"metric": "sleep_hours",  "label": "Sleep",   "unit": "hrs", "target_ref": "daily_targets.sleep_hours", "higher_is_better": true},
+    {"metric": "steps",        "label": "Steps",   "unit": "",    "target_ref": "daily_targets.steps",       "higher_is_better": true}
+  ]
+}
