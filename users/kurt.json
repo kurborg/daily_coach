@@ -27,6 +27,8 @@
     "calories_rest_day": 2200,
     "calories_training_day": 2600,
     "fat_g_min": 60,
+    "fat_g_max": 100,
+    "carbs_g_max": 200,
     "sleep_hours": 7.5,
     "steps": 10000,
     "active_calories": 400,

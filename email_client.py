@@ -724,14 +724,17 @@ def _build_workout_rows(metrics_summary: dict) -> str:
 
 def _build_nutrition_bars(metrics_summary: dict, cfg: dict) -> str:
     t = cfg.get("daily_targets", {})
+    # Each item: (label, val, min_goal, max_goal, unit, color)
+    # min_goal = must reach or exceed (protein); max_goal = must not exceed (calories, carbs, fat)
+    # Fat has both: must stay in [fat_g_min, fat_g_max]
     items = [
-        ("Calories", metrics_summary.get("calories_consumed"), t.get("calories_rest_day"), " kcal", ACCENT),
-        ("Protein",  metrics_summary.get("protein_g"),         t.get("protein_g"),         "g",     GREEN),
-        ("Carbs",    metrics_summary.get("carbs_g"),           None,                        "g",     GOLD),
-        ("Fat",      metrics_summary.get("fat_g"),             t.get("fat_g_min"),          "g",     ORANGE),
+        ("Calories", metrics_summary.get("calories_consumed"), None,              t.get("calories_rest_day"), " kcal", ACCENT),
+        ("Protein",  metrics_summary.get("protein_g"),         t.get("protein_g"), None,                      "g",     GREEN),
+        ("Carbs",    metrics_summary.get("carbs_g"),           None,              t.get("carbs_g_max"),        "g",     GOLD),
+        ("Fat",      metrics_summary.get("fat_g"),             t.get("fat_g_min"), t.get("fat_g_max"),         "g",     ORANGE),
     ]
     rows = []
-    for label, val, target, unit, color in items:
+    for label, val, min_goal, max_goal, unit, color in items:
         if val is None:
             rows.append(
                 f'<tr><td style="padding:5px 0;">'
@@ -739,10 +742,20 @@ def _build_nutrition_bars(metrics_summary: dict, cfg: dict) -> str:
                 f'</td></tr>'
             )
             continue
-        pct = min(100, int((val / target) * 100)) if target else 50
-        on = (val >= target) if target else True
-        status = "✓" if on else f"{pct}%"
-        status_color = color if on else (ORANGE if pct >= 75 else RED)
+        # Use max_goal as the bar reference if available, otherwise min_goal
+        bar_ref = max_goal or min_goal
+        pct = min(100, int((val / bar_ref) * 100)) if bar_ref else 50
+        # Determine pass/fail
+        if max_goal and min_goal:
+            on = (min_goal <= val <= max_goal)   # must be in range (fat)
+        elif max_goal:
+            on = (val <= max_goal)               # must not exceed (calories, carbs)
+        elif min_goal:
+            on = (val >= min_goal)               # must reach minimum (protein)
+        else:
+            on = True
+        status = "✓" if on else "✗"
+        status_color = color if on else RED
         rows.append(
             f'<tr><td style="padding:7px 0;">'
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
