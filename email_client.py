@@ -552,6 +552,19 @@ def _build_html(coaching_brief_text: str, date_str: str, metrics_summary: dict, 
 
     <tr><td style="height:14px;"></td></tr>
 
+    <!-- ═══ NUTRITION ═══ -->
+    <tr>
+      <td style="background:{CARD};border-radius:14px;padding:20px 24px;">
+        <div style="font-size:11px;color:{MUTED};letter-spacing:2px;
+                    text-transform:uppercase;font-weight:700;margin-bottom:12px;">
+          🥗 &nbsp;Yesterday's Nutrition
+        </div>
+        {_build_nutrition_bars(m, cfg)}
+      </td>
+    </tr>
+
+    <tr><td style="height:14px;"></td></tr>
+
     <!-- ═══ COACHING BRIEF ═══ -->
     <tr>
       <td style="background:{CARD};border-radius:14px;padding:24px 26px;">
@@ -693,16 +706,19 @@ def _build_nutrition_bars(metrics_summary: dict, cfg: dict) -> str:
             continue
         pct = min(100, int((val / target) * 100)) if target else 50
         on = (val >= target) if target else True
-        bar_c = GREEN if on else (ORANGE if pct >= 75 else RED)
+        status = "✓" if on else f"{pct}%"
+        status_color = color if on else (ORANGE if pct >= 75 else RED)
         rows.append(
-            f'<tr><td style="padding:6px 0;">'
+            f'<tr><td style="padding:7px 0;">'
             f'<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
             f'<td width="70"><span style="font-size:12px;color:{MUTED};">{label}</span></td>'
-            f'<td><div style="background:{BORDER};border-radius:3px;height:6px;">'
-            f'<div style="width:{pct}%;height:6px;background:{bar_c};border-radius:3px;"></div>'
+            f'<td><div style="background:{BORDER};border-radius:4px;height:7px;">'
+            f'<div style="width:{pct}%;height:7px;background:{color};border-radius:4px;"></div>'
             f'</div></td>'
-            f'<td width="80" align="right"><span style="font-size:12px;font-weight:600;color:{TEXT};">'
-            f'{int(val)}{unit}</span></td>'
+            f'<td width="90" align="right">'
+            f'<span style="font-size:12px;font-weight:600;color:{TEXT};">{int(val)}{unit}</span>'
+            f'<span style="font-size:11px;color:{status_color};margin-left:5px;">{status}</span>'
+            f'</td>'
             f'</tr></table>'
             f'</td></tr>'
         )
