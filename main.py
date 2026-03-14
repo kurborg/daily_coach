@@ -118,7 +118,10 @@ def run_review_for_user(cfg: dict, dry_run: bool = False):
             raw_json["data"]["workouts"] = workouts
 
     # Parse today's data (not yesterday's)
-    health = HealthData.parse(raw_json, target_date=today_str)
+    # Don't pin to today's date — let the parser auto-detect the most recent
+    # date in the export so we always get real data even if the file was
+    # generated earlier in the day or is from yesterday's sync.
+    health = HealthData.parse(raw_json, target_date=None)
     summary_dict = health.to_summary_dict()
     coaching_str = health.to_coaching_string()
 

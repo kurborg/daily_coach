@@ -183,6 +183,10 @@ class HealthData:
 
         parsed_workouts = []
         for w in workouts:
+            # Filter to _ref_date only — workout exports often span multiple days
+            w_start = w.get("start", "")
+            if _ref_date and w_start and w_start[:10] != _ref_date:
+                continue
             duration_sec = _qty(w.get("duration"))
             duration_min = round(duration_sec / 60, 1)
             energy = _qty(w.get("activeEnergyBurned") or w.get("activeEnergy"))
