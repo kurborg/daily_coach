@@ -233,6 +233,49 @@ def _retatrutide_context(cfg: dict) -> str:
     return ""
 
 
+def build_review_prompt(
+    health_summary: str,
+    cfg: dict,
+) -> tuple[str, str]:
+    """Build system + user prompt for the evening day-in-review Claude call."""
+    today = date.today()
+    t = cfg.get("daily_targets", {})
+    g = cfg.get("goals", {})
+    p = cfg["profile"]
+
+    # Reuse the same system prompt — all user context is already there.
+    # Override just the coaching style instructions for an end-of-day tone.
+    system_prompt = _build_system_prompt(cfg)
+    # Append evening-specific instruction override
+    system_prompt += f"""
+
+EVENING REVIEW MODE:
+You are analyzing {p['name']}'s completed day, not planning tomorrow. Your job is:
+- Objectively score today against the targets above
+- Call out the biggest win and the biggest gap, with specific numbers
+- Give 3 directives: 1 for tonight (recovery, sleep prep, final nutrition), 2 for tomorrow
+- Use section headers: TODAY'S ANALYSIS | WINS & GAPS | TONIGHT + TOMORROW
+- Keep it under 400 words — this is a recap, not a full brief"""
+
+    retro_context = _retatrutide_context(cfg)
+
+    user_message = f"""Today: {today.strftime('%A, %B %d, %Y')} — End-of-Day Review
+{f'Compound context: {retro_context}' if retro_context else ''}
+
+{health_summary}
+
+DAILY TARGETS FOR COMPARISON:
+{f"- Protein target: {t['protein_g']}g" if t.get('protein_g') else ''}
+{f"- Calorie target: {t.get('calories_training_day') if health_summary and 'workout' in health_summary.lower() else t.get('calories_rest_day')} kcal" if t.get('calories_rest_day') or t.get('calories_training_day') else ''}
+{f"- Steps target: {t['steps']:,}" if t.get('steps') else ''}
+{f"- Sleep target: {t['sleep_hours']} hrs" if t.get('sleep_hours') else ''}
+{f"- Weight target: {g['weight_target_lbs']} lbs by {g['weight_cutoff_date']}" if g.get('weight_target_lbs') and g.get('weight_cutoff_date') else ''}
+
+Analyze today. Be direct. No filler."""
+
+    return system_prompt.strip(), user_message.strip()
+
+
 def build_coaching_prompt(
     health_summary: str,
     rolling_averages: dict,

@@ -8,7 +8,7 @@ from config_loader import load_all_users, load_user, resolve_ref
 from drive_client import get_latest_health_export, get_latest_workout_export
 from health_parser import HealthData
 from trend_tracker import save_daily_summary, get_rolling_averages, get_weight_trend, get_streak
-from coach_prompt import build_coaching_prompt
+from coach_prompt import build_coaching_prompt, build_review_prompt
 from anthropic_client import get_coaching_brief
 from email_client import send_coaching_email, send_review_email
 
@@ -120,20 +120,28 @@ def run_review_for_user(cfg: dict, dry_run: bool = False):
     # Parse today's data (not yesterday's)
     health = HealthData.parse(raw_json, target_date=today_str)
     summary_dict = health.to_summary_dict()
+    coaching_str = health.to_coaching_string()
+
+    # Claude analysis
+    system_prompt, user_message = build_review_prompt(
+        health_summary=coaching_str,
+        cfg=cfg,
+    )
+    print(f"[Review] Requesting end-of-day analysis from Claude...")
+    review_brief = get_coaching_brief(system_prompt, user_message)
 
     if dry_run:
         print("\n" + "=" * 60)
         print(f"DRY RUN (review) — {name} — {date_str}")
         print("=" * 60)
-        for k, v in summary_dict.items():
-            if v is not None:
-                print(f"  {k}: {v}")
+        print(review_brief)
         print("=" * 60)
         return
 
     send_review_email(
         date_str=date_str,
         metrics_summary=summary_dict,
+        review_brief_text=review_brief,
         to_email=cfg["email"],
         cfg=cfg,
     )

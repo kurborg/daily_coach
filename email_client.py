@@ -709,7 +709,60 @@ def _build_nutrition_bars(metrics_summary: dict, cfg: dict) -> str:
     return f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{"".join(rows)}</table>'
 
 
-def _build_review_html(date_str: str, metrics_summary: dict, cfg: dict) -> str:
+def _format_review_brief_html(text: str) -> str:
+    """Style the evening review brief."""
+    lines = text.split("\n")
+    html_lines = []
+    in_directives = False
+
+    section_map = {
+        "TODAY'S ANALYSIS":    ("📊", "TODAY'S ANALYSIS"),
+        "WINS & GAPS":         ("🏆", "WINS & GAPS"),
+        "TONIGHT + TOMORROW":  ("🎯", "TONIGHT + TOMORROW"),
+    }
+
+    for line in lines:
+        stripped = line.strip()
+        matched = False
+        for key, (emoji, label) in section_map.items():
+            if key in stripped.upper():
+                in_directives = key == "TONIGHT + TOMORROW"
+                html_lines.append(
+                    f'<div style="margin:20px 0 10px;padding-bottom:8px;border-bottom:1px solid {BORDER};">'
+                    f'<span style="font-size:15px;font-weight:700;color:{GOLD};letter-spacing:1px;">'
+                    f'{emoji} {label}</span></div>'
+                )
+                matched = True
+                break
+
+        if not matched:
+            if not stripped:
+                html_lines.append('<div style="height:8px;"></div>')
+            elif in_directives and stripped[:2] in ("1.", "2.", "3."):
+                num = stripped[0]
+                rest = stripped[2:].strip()
+                colors = {"1": ACCENT, "2": GREEN, "3": GOLD}
+                c = colors.get(num, ACCENT)
+                html_lines.append(
+                    f'<table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:8px 0;">'
+                    f'<tr>'
+                    f'<td width="32" style="vertical-align:top;">'
+                    f'<div style="width:26px;height:26px;background:{c};border-radius:50%;text-align:center;'
+                    f'line-height:26px;font-size:13px;font-weight:700;color:{BG};">{num}</div>'
+                    f'</td>'
+                    f'<td style="vertical-align:top;padding-left:10px;padding-top:3px;">'
+                    f'<span style="font-size:14px;color:{TEXT};line-height:1.6;">{rest}</span>'
+                    f'</td></tr></table>'
+                )
+            else:
+                html_lines.append(
+                    f'<p style="margin:6px 0;font-size:14px;color:{TEXT};line-height:1.7;">{stripped}</p>'
+                )
+
+    return "\n".join(html_lines)
+
+
+def _build_review_html(date_str: str, metrics_summary: dict, cfg: dict, review_brief_text: str = "") -> str:
     name   = cfg["profile"]["name"]
     events = cfg.get("events", [])
 
@@ -730,9 +783,10 @@ def _build_review_html(date_str: str, metrics_summary: dict, cfg: dict) -> str:
     else:
         header_countdown = ""
 
-    metric_grid     = _build_metric_grid(cfg, metrics_summary)
-    workout_rows    = _build_workout_rows(metrics_summary)
-    nutrition_bars  = _build_nutrition_bars(metrics_summary, cfg)
+    metric_grid    = _build_metric_grid(cfg, metrics_summary)
+    workout_rows   = _build_workout_rows(metrics_summary)
+    nutrition_bars = _build_nutrition_bars(metrics_summary, cfg)
+    brief_html     = _format_review_brief_html(review_brief_text) if review_brief_text else ""
 
     return f"""<!DOCTYPE html>
 <html lang="en">
@@ -810,6 +864,9 @@ def _build_review_html(date_str: str, metrics_summary: dict, cfg: dict) -> str:
 
     <tr><td style="height:10px;"></td></tr>
 
+    <!-- ═══ AI ANALYSIS ═══ -->
+    {'<tr><td style="background:' + CARD + ';border-radius:14px;padding:24px 26px;"><div style="font-size:11px;color:' + MUTED + ';letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:16px;">🤖 &nbsp;AI Day Analysis</div>' + brief_html + '</td></tr><tr><td style="height:10px;"></td></tr>' if brief_html else ''}
+
     <!-- ═══ BIBLE VERSE ═══ -->
     <tr>
       <td style="background:{CARD};border-radius:14px;padding:18px 24px;border-left:4px solid {GOLD};">
@@ -854,7 +911,7 @@ def _build_review_html(date_str: str, metrics_summary: dict, cfg: dict) -> str:
 </html>"""
 
 
-def _build_review_plain(date_str: str, metrics_summary: dict, cfg: dict) -> str:
+def _build_review_plain(date_str: str, metrics_summary: dict, cfg: dict, review_brief_text: str = "") -> str:
     name = cfg["profile"]["name"]
     m    = metrics_summary
 
@@ -885,6 +942,8 @@ def _build_review_plain(date_str: str, metrics_summary: dict, cfg: dict) -> str:
     def fmt(v, unit="", d=0):
         return "N/A" if v is None else (f"{v:.{d}f}{unit}" if d else f"{int(v)}{unit}")
 
+    ai_section = f"\n{'=' * 56}\n🤖  AI DAY ANALYSIS\n{review_brief_text}\n" if review_brief_text else ""
+
     return f"""{name.upper()}'S DAY IN REVIEW — {date_str}
 {'=' * 56}
 
@@ -908,7 +967,7 @@ def _build_review_plain(date_str: str, metrics_summary: dict, cfg: dict) -> str:
     Protein:  {fmt(m.get('protein_g'), 'g')}
     Carbs:    {fmt(m.get('carbs_g'), 'g')}
     Fat:      {fmt(m.get('fat_g'), 'g')}
-
+{ai_section}
 {'=' * 56}
 Powered by Claude · Built for {name}
 """
@@ -919,12 +978,13 @@ def send_review_email(
     metrics_summary: dict,
     to_email: str,
     cfg: dict,
+    review_brief_text: str = "",
 ):
     name = cfg["profile"]["name"]
     subject = f"🌙 {name}'s Day in Review — {date_str}"
 
-    html  = _build_review_html(date_str, metrics_summary, cfg)
-    plain = _build_review_plain(date_str, metrics_summary, cfg)
+    html  = _build_review_html(date_str, metrics_summary, cfg, review_brief_text)
+    plain = _build_review_plain(date_str, metrics_summary, cfg, review_brief_text)
 
     from_email = os.environ["FROM_EMAIL"]
 

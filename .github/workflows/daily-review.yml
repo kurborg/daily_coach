@@ -24,6 +24,7 @@ jobs:
 
       - name: Run day-in-review pipeline
         env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GOOGLE_SERVICE_ACCOUNT_BASE64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_BASE64 }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           FROM_EMAIL: ${{ vars.FROM_EMAIL }}
