@@ -639,6 +639,309 @@ Powered by Claude · Built for {name}
 """
 
 
+def _build_workout_rows(metrics_summary: dict) -> str:
+    workouts = metrics_summary.get("workouts", [])
+    derived  = metrics_summary.get("derived_activities", [])
+    activities = workouts if workouts else derived
+
+    if not activities:
+        return f'<p style="font-size:14px;color:{MUTED};margin:0;padding:4px 0;">No workouts logged today.</p>'
+
+    rows = []
+    for a in activities:
+        if "duration_min" in a:
+            parts = [f'{a["duration_min"]:.0f} min']
+            if a.get("distance_mi"):
+                parts.append(f'{a["distance_mi"]:.2f} mi')
+            if a.get("active_energy"):
+                parts.append(f'{int(a["active_energy"])} kcal')
+            if a.get("avg_hr"):
+                parts.append(f'avg HR {int(a["avg_hr"])} bpm')
+            details = " · ".join(parts)
+        else:
+            details = f'{a["distance_mi"]:.2f} mi'
+
+        rows.append(
+            f'<tr><td style="padding:12px 16px;border-bottom:1px solid {BORDER};">'
+            f'<div style="font-size:14px;font-weight:600;color:{TEXT};">🏋️ {a["name"]}</div>'
+            f'<div style="font-size:12px;color:{MUTED};margin-top:3px;">{details}</div>'
+            f'</td></tr>'
+        )
+    return (
+        f'<table width="100%" cellpadding="0" cellspacing="0" border="0">'
+        + "".join(rows)
+        + "</table>"
+    )
+
+
+def _build_nutrition_bars(metrics_summary: dict, cfg: dict) -> str:
+    t = cfg.get("daily_targets", {})
+    items = [
+        ("Calories", metrics_summary.get("calories_consumed"), t.get("calories_rest_day"), " kcal", ACCENT),
+        ("Protein",  metrics_summary.get("protein_g"),         t.get("protein_g"),         "g",     GREEN),
+        ("Carbs",    metrics_summary.get("carbs_g"),           None,                        "g",     GOLD),
+        ("Fat",      metrics_summary.get("fat_g"),             t.get("fat_g_min"),          "g",     ORANGE),
+    ]
+    rows = []
+    for label, val, target, unit, color in items:
+        if val is None:
+            rows.append(
+                f'<tr><td style="padding:5px 0;">'
+                f'<span style="font-size:12px;color:{MUTED};">{label}: Not logged</span>'
+                f'</td></tr>'
+            )
+            continue
+        pct = min(100, int((val / target) * 100)) if target else 50
+        on = (val >= target) if target else True
+        bar_c = GREEN if on else (ORANGE if pct >= 75 else RED)
+        rows.append(
+            f'<tr><td style="padding:6px 0;">'
+            f'<table width="100%" cellpadding="0" cellspacing="0" border="0"><tr>'
+            f'<td width="70"><span style="font-size:12px;color:{MUTED};">{label}</span></td>'
+            f'<td><div style="background:{BORDER};border-radius:3px;height:6px;">'
+            f'<div style="width:{pct}%;height:6px;background:{bar_c};border-radius:3px;"></div>'
+            f'</div></td>'
+            f'<td width="80" align="right"><span style="font-size:12px;font-weight:600;color:{TEXT};">'
+            f'{int(val)}{unit}</span></td>'
+            f'</tr></table>'
+            f'</td></tr>'
+        )
+    return f'<table width="100%" cellpadding="0" cellspacing="0" border="0">{"".join(rows)}</table>'
+
+
+def _build_review_html(date_str: str, metrics_summary: dict, cfg: dict) -> str:
+    name   = cfg["profile"]["name"]
+    events = cfg.get("events", [])
+
+    quote_text, quote_author = _daily_pick(MOTIVATIONAL_QUOTES)
+    verse_text, verse_ref   = _daily_pick(BIBLE_VERSES)
+
+    # Event countdowns header (optional)
+    first_event = next((e for e in events if e["date"]), None)
+    if first_event:
+        d = datetime.strptime(first_event["date"], "%Y-%m-%d").date()
+        header_countdown = (
+            f'<div style="text-align:right;">'
+            f'<div style="font-size:11px;color:{MUTED};letter-spacing:1px;margin-bottom:4px;">{first_event["short"].upper()}</div>'
+            f'<div style="font-size:24px;font-weight:800;color:{ACCENT};">{_days_until(d)}</div>'
+            f'<div style="font-size:10px;color:{MUTED};">days away</div>'
+            f'</div>'
+        )
+    else:
+        header_countdown = ""
+
+    metric_grid     = _build_metric_grid(cfg, metrics_summary)
+    workout_rows    = _build_workout_rows(metrics_summary)
+    nutrition_bars  = _build_nutrition_bars(metrics_summary, cfg)
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Day in Review</title>
+</head>
+<body style="margin:0;padding:0;background:{BG};font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:{BG};">
+  <tr><td align="center" style="padding:24px 12px;">
+  <table width="620" cellpadding="0" cellspacing="0" border="0" style="max-width:620px;width:100%;">
+
+    <!-- ═══ HEADER ═══ -->
+    <tr>
+      <td style="background:linear-gradient(135deg,#0d1b3e 0%,#1a1a2e 50%,#0d2a3e 100%);
+                 border-radius:16px;padding:28px 30px 24px;border-bottom:3px solid {GOLD};">
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td>
+              <div style="font-size:11px;color:{MUTED};letter-spacing:3px;text-transform:uppercase;margin-bottom:6px;">
+                Day in Review
+              </div>
+              <div style="font-size:28px;font-weight:800;color:{WHITE};line-height:1.2;">
+                🌙 {name}'s Day
+              </div>
+              <div style="font-size:13px;color:{MUTED};margin-top:6px;">{date_str}</div>
+            </td>
+            <td align="right" style="vertical-align:top;">{header_countdown}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <tr><td style="height:14px;"></td></tr>
+
+    <!-- ═══ METRICS GRID ═══ -->
+    <tr>
+      <td style="background:{CARD};border-radius:14px;padding:20px;">
+        <div style="font-size:11px;color:{MUTED};letter-spacing:2px;
+                    text-transform:uppercase;font-weight:700;margin-bottom:14px;">
+          📊 &nbsp;Today's Numbers
+        </div>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+{metric_grid}
+        </table>
+      </td>
+    </tr>
+
+    <tr><td style="height:10px;"></td></tr>
+
+    <!-- ═══ WORKOUTS ═══ -->
+    <tr>
+      <td style="background:{CARD};border-radius:14px;padding:20px;">
+        <div style="font-size:11px;color:{MUTED};letter-spacing:2px;
+                    text-transform:uppercase;font-weight:700;margin-bottom:14px;">
+          🏋️ &nbsp;Workouts
+        </div>
+        {workout_rows}
+      </td>
+    </tr>
+
+    <tr><td style="height:10px;"></td></tr>
+
+    <!-- ═══ NUTRITION ═══ -->
+    <tr>
+      <td style="background:{CARD};border-radius:14px;padding:20px;">
+        <div style="font-size:11px;color:{MUTED};letter-spacing:2px;
+                    text-transform:uppercase;font-weight:700;margin-bottom:14px;">
+          🥗 &nbsp;Nutrition
+        </div>
+        {nutrition_bars}
+      </td>
+    </tr>
+
+    <tr><td style="height:10px;"></td></tr>
+
+    <!-- ═══ BIBLE VERSE ═══ -->
+    <tr>
+      <td style="background:{CARD};border-radius:14px;padding:18px 24px;border-left:4px solid {GOLD};">
+        <div style="font-size:11px;color:{GOLD};letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">
+          ✝️ &nbsp;Verse of the Day
+        </div>
+        <div style="font-size:14px;color:{TEXT};line-height:1.7;font-style:italic;">"{verse_text}"</div>
+        <div style="font-size:12px;color:{GOLD};margin-top:8px;font-weight:600;">— {verse_ref}</div>
+      </td>
+    </tr>
+
+    <tr><td style="height:10px;"></td></tr>
+
+    <!-- ═══ QUOTE ═══ -->
+    <tr>
+      <td style="background:{CARD};border-radius:14px;padding:18px 24px;border-left:4px solid {ACCENT};">
+        <div style="font-size:11px;color:{ACCENT};letter-spacing:2px;text-transform:uppercase;font-weight:700;margin-bottom:8px;">
+          🔥 &nbsp;End Strong
+        </div>
+        <div style="font-size:14px;color:{TEXT};line-height:1.7;font-style:italic;">"{quote_text}"</div>
+        <div style="font-size:12px;color:{ACCENT};margin-top:6px;font-weight:600;">— {quote_author}</div>
+      </td>
+    </tr>
+
+    <tr><td style="height:14px;"></td></tr>
+
+    <!-- ═══ FOOTER ═══ -->
+    <tr>
+      <td align="center" style="padding:16px 0 8px;">
+        <div style="font-size:11px;color:{MUTED};line-height:1.8;">
+          Powered by Claude · Built for {name}<br>
+          <span style="color:{BORDER};">——————————————</span><br>
+          <span style="font-size:10px;">Data from Apple Health via Health Auto Export</span>
+        </div>
+      </td>
+    </tr>
+
+  </table>
+  </td></tr>
+</table>
+</body>
+</html>"""
+
+
+def _build_review_plain(date_str: str, metrics_summary: dict, cfg: dict) -> str:
+    name = cfg["profile"]["name"]
+    m    = metrics_summary
+
+    quote_text, quote_author = _daily_pick(MOTIVATIONAL_QUOTES)
+    verse_text, verse_ref   = _daily_pick(BIBLE_VERSES)
+
+    metric_lines = []
+    for card in cfg.get("metric_cards", []):
+        v       = m.get(card["data_key"])
+        target  = _resolve_target(cfg, card, m)
+        d       = card.get("decimals", 0)
+        val_str = "N/A" if v is None else (f"{v:.{d}f}{card.get('unit','')}" if d else f"{int(v)}{card.get('unit','')}")
+        goal    = f"  (goal: {target})" if target is not None else ""
+        metric_lines.append(f"    {card['emoji']}  {card['label']}: {val_str}{goal}")
+
+    workouts = m.get("workouts", []) or m.get("derived_activities", [])
+    workout_lines = []
+    for a in workouts:
+        if "duration_min" in a:
+            line = f'    - {a["name"]}: {a["duration_min"]:.0f} min'
+            if a.get("distance_mi"): line += f', {a["distance_mi"]:.2f} mi'
+            if a.get("active_energy"): line += f', {int(a["active_energy"])} kcal'
+        else:
+            line = f'    - {a["name"]}: {a["distance_mi"]:.2f} mi'
+        workout_lines.append(line)
+    workouts_str = "\n".join(workout_lines) if workout_lines else "    No workouts logged."
+
+    def fmt(v, unit="", d=0):
+        return "N/A" if v is None else (f"{v:.{d}f}{unit}" if d else f"{int(v)}{unit}")
+
+    return f"""{name.upper()}'S DAY IN REVIEW — {date_str}
+{'=' * 56}
+
+✝️  "{verse_text}"
+    — {verse_ref}
+
+🔥  "{quote_text}"
+    — {quote_author}
+
+{'=' * 56}
+📊  TODAY'S NUMBERS
+{chr(10).join(metric_lines)}
+
+{'=' * 56}
+🏋️  WORKOUTS
+{workouts_str}
+
+{'=' * 56}
+🥗  NUTRITION
+    Calories: {fmt(m.get('calories_consumed'), ' kcal')}
+    Protein:  {fmt(m.get('protein_g'), 'g')}
+    Carbs:    {fmt(m.get('carbs_g'), 'g')}
+    Fat:      {fmt(m.get('fat_g'), 'g')}
+
+{'=' * 56}
+Powered by Claude · Built for {name}
+"""
+
+
+def send_review_email(
+    date_str: str,
+    metrics_summary: dict,
+    to_email: str,
+    cfg: dict,
+):
+    name = cfg["profile"]["name"]
+    subject = f"🌙 {name}'s Day in Review — {date_str}"
+
+    html  = _build_review_html(date_str, metrics_summary, cfg)
+    plain = _build_review_plain(date_str, metrics_summary, cfg)
+
+    from_email = os.environ["FROM_EMAIL"]
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"]    = from_email
+    msg["To"]      = to_email
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html,  "html"))
+
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        server.login(from_email, os.environ["GMAIL_APP_PASSWORD"])
+        server.sendmail(from_email, to_email, msg.as_string())
+
+    print(f"[Gmail] Review email sent to {to_email}")
+
+
 def send_coaching_email(
     coaching_brief_text: str,
     date_str: str,

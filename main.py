@@ -10,7 +10,7 @@ from health_parser import HealthData
 from trend_tracker import save_daily_summary, get_rolling_averages, get_weight_trend, get_streak
 from coach_prompt import build_coaching_prompt
 from anthropic_client import get_coaching_brief
-from email_client import send_coaching_email
+from email_client import send_coaching_email, send_review_email
 
 
 def run_for_user(cfg: dict, dry_run: bool = False):
@@ -94,14 +94,62 @@ def run_for_user(cfg: dict, dry_run: bool = False):
     print(f"[Coach] ✓ Done — {name}")
 
 
+def run_review_for_user(cfg: dict, dry_run: bool = False):
+    user_id  = cfg["_user_id"]
+    name     = cfg["profile"]["name"]
+    today    = date.today()
+    today_str = today.isoformat()
+    date_str  = today.strftime("%A, %B %d, %Y")
+
+    print(f"[Review] ── {name} ──────────────────────────")
+
+    # Fetch health data
+    raw_json = get_latest_health_export(
+        folder_id=cfg.get("folder_id", ""),
+        folder_name=cfg.get("folder_name", ""),
+    )
+
+    if cfg.get("workout_folder_name") or cfg.get("workout_folder_id"):
+        workouts = get_latest_workout_export(
+            folder_id=cfg.get("workout_folder_id", ""),
+            folder_name=cfg.get("workout_folder_name", ""),
+        )
+        if workouts:
+            raw_json["data"]["workouts"] = workouts
+
+    # Parse today's data (not yesterday's)
+    health = HealthData.parse(raw_json, target_date=today_str)
+    summary_dict = health.to_summary_dict()
+
+    if dry_run:
+        print("\n" + "=" * 60)
+        print(f"DRY RUN (review) — {name} — {date_str}")
+        print("=" * 60)
+        for k, v in summary_dict.items():
+            if v is not None:
+                print(f"  {k}: {v}")
+        print("=" * 60)
+        return
+
+    send_review_email(
+        date_str=date_str,
+        metrics_summary=summary_dict,
+        to_email=cfg["email"],
+        cfg=cfg,
+    )
+    print(f"[Review] ✓ Done — {name}")
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--user", help="Run for a single user_id only")
+    parser.add_argument("--review", action="store_true", help="Send evening day-in-review email instead of morning coaching brief")
     args = parser.parse_args()
 
     today_str = date.today().isoformat()
-    print(f"[Coach] Starting daily coaching pipeline for {today_str}")
+    mode = "review" if args.review else "coaching"
+    print(f"[Coach] Starting daily {mode} pipeline for {today_str}")
 
     if args.user:
         users = [load_user(args.user)]
@@ -110,9 +158,11 @@ def main():
 
     print(f"[Coach] {len(users)} user(s) to process")
 
+    runner = run_review_for_user if args.review else run_for_user
+
     for cfg in users:
         try:
-            run_for_user(cfg, dry_run=args.dry_run)
+            runner(cfg, dry_run=args.dry_run)
         except Exception as e:
             print(f"[Coach] ERROR for {cfg.get('profile', {}).get('name', cfg['_user_id'])}: {e}")
             import traceback; traceback.print_exc()
