@@ -652,6 +652,41 @@ Powered by Claude · Built for {name}
 """
 
 
+def _workout_emoji(name: str) -> str:
+    n = name.lower()
+    if any(k in n for k in ("cycling", "bike", "bicycle", "gravel", "road bike", "mountain bike")):
+        return "🚴"
+    if any(k in n for k in ("run", "running", "jog")):
+        return "🏃"
+    if any(k in n for k in ("walk", "walking", "hike", "hiking")):
+        return "🚶"
+    if any(k in n for k in ("swim", "swimming", "pool", "open water")):
+        return "🏊"
+    if any(k in n for k in ("row", "rowing", "erg")):
+        return "🚣"
+    if any(k in n for k in ("yoga", "pilates", "stretch", "flexibility", "mobility")):
+        return "🧘"
+    if any(k in n for k in ("hiit", "interval", "circuit")):
+        return "⚡"
+    if any(k in n for k in ("stair", "climb", "climbing", "step")):
+        return "🪜"
+    if any(k in n for k in ("tennis", "pickleball", "squash", "racquet")):
+        return "🎾"
+    if any(k in n for k in ("spartan", "hyrox", "race", "obstacle", "marathon", "triathlon")):
+        return "🏁"
+    if any(k in n for k in ("soccer", "football")):
+        return "⚽"
+    if any(k in n for k in ("basketball", "hoops")):
+        return "🏀"
+    if any(k in n for k in ("core", "functional", "crossfit", "calisthenics")):
+        return "💪"
+    if any(k in n for k in ("strength", "weight", "lifting", "gym", "functional strength")):
+        return "🏋️"
+    if any(k in n for k in ("elliptical", "treadmill", "cardio")):
+        return "🏃"
+    return "🏅"
+
+
 def _build_workout_rows(metrics_summary: dict) -> str:
     workouts = metrics_summary.get("workouts", [])
     derived  = metrics_summary.get("derived_activities", [])
@@ -676,7 +711,7 @@ def _build_workout_rows(metrics_summary: dict) -> str:
 
         rows.append(
             f'<tr><td style="padding:12px 16px;border-bottom:1px solid {BORDER};">'
-            f'<div style="font-size:14px;font-weight:600;color:{TEXT};">🏋️ {a["name"]}</div>'
+            f'<div style="font-size:14px;font-weight:600;color:{TEXT};">{_workout_emoji(a["name"])} {a["name"]}</div>'
             f'<div style="font-size:12px;color:{MUTED};margin-top:3px;">{details}</div>'
             f'</td></tr>'
         )
