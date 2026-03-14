@@ -83,11 +83,19 @@ def _list_export_files(service, folder_id: str) -> list:
     result = service.files().list(
         q=query,
         orderBy="createdTime desc",
+        pageSize=1000,
         fields="files(id, name, createdTime, mimeType)",
     ).execute()
     files = result.get("files", [])
+    print(f"[Drive] Found {len(files)} total file(s) in folder before filtering")
+    if files:
+        sample = files[:5]
+        for f in sample:
+            print(f"[Drive]   {f['name']} | mimeType={f['mimeType']}")
     # Filter client-side by extension — Drive often assigns text/plain to .json uploads
-    return [f for f in files if f["name"].endswith(".json") or f["name"].endswith(".zip")]
+    filtered = [f for f in files if f["name"].endswith(".json") or f["name"].endswith(".zip")]
+    print(f"[Drive] {len(filtered)} file(s) matched .json/.zip filter")
+    return filtered
 
 
 def _download_bytes(service, file_id: str) -> bytes:
