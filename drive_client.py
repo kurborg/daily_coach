@@ -2,6 +2,7 @@ import os
 import json
 import base64
 import zipfile
+import time
 from io import BytesIO
 
 from google.oauth2 import service_account
@@ -156,14 +157,25 @@ def _merge_daily_exports(exports: list) -> dict:
     return {"data": {"metrics": list(merged_metrics.values()), "workouts": merged_workouts}}
 
 
-def get_latest_health_export(folder_id: str = "", folder_name: str = "") -> dict:
+def get_latest_health_export(folder_id: str = "", folder_name: str = "", retries: int = 3, retry_delay: int = 60) -> dict:
     """
     Fetch and merge the last DAYS_TO_FETCH daily export files.
     Returns a single combined JSON structure for health_parser.py.
+
+    Retries if the folder is temporarily empty (e.g. during a file rotation
+    by the Health Auto Export app).
     """
     service = _get_service()
     resolved_folder_id = _resolve_export_folder(service, folder_id=folder_id, folder_name=folder_name)
-    files = _list_export_files(service, resolved_folder_id)
+
+    files = []
+    for attempt in range(1, retries + 1):
+        files = _list_export_files(service, resolved_folder_id)
+        if files:
+            break
+        if attempt < retries:
+            print(f"[Drive] No export files found (attempt {attempt}/{retries}). Retrying in {retry_delay}s...")
+            time.sleep(retry_delay)
 
     if not files:
         raise FileNotFoundError("No export files (.zip or .json) found in the health exports folder.")
