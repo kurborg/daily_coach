@@ -725,13 +725,13 @@ def _build_workout_rows(metrics_summary: dict) -> str:
 def _build_nutrition_bars(metrics_summary: dict, cfg: dict) -> str:
     t = cfg.get("daily_targets", {})
     # Each item: (label, val, min_goal, max_goal, unit, color)
-    # min_goal = must reach or exceed (protein); max_goal = must not exceed (calories, carbs, fat)
-    # Fat has both: must stay in [fat_g_min, fat_g_max]
+    # All macros use a range: ✓ only when min_goal <= val <= max_goal
+    # Protein has no max (high protein is fine); everything else has both bounds.
     items = [
-        ("Calories", metrics_summary.get("calories_consumed"), None,              t.get("calories_rest_day"), " kcal", ACCENT),
-        ("Protein",  metrics_summary.get("protein_g"),         t.get("protein_g"), None,                      "g",     GREEN),
-        ("Carbs",    metrics_summary.get("carbs_g"),           None,              t.get("carbs_g_max"),        "g",     GOLD),
-        ("Fat",      metrics_summary.get("fat_g"),             t.get("fat_g_min"), t.get("fat_g_max"),         "g",     ORANGE),
+        ("Calories", metrics_summary.get("calories_consumed"), t.get("calories_min"),  t.get("calories_rest_day"), " kcal", ACCENT),
+        ("Protein",  metrics_summary.get("protein_g"),         t.get("protein_g"),     None,                      "g",     GREEN),
+        ("Carbs",    metrics_summary.get("carbs_g"),           t.get("carbs_g_min"),   t.get("carbs_g_max"),       "g",     GOLD),
+        ("Fat",      metrics_summary.get("fat_g"),             t.get("fat_g_min"),     t.get("fat_g_max"),         "g",     ORANGE),
     ]
     rows = []
     for label, val, min_goal, max_goal, unit, color in items:
