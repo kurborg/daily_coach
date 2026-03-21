@@ -1,0 +1,32 @@
+name: Evening Day-in-Review
+
+on:
+  schedule:
+    - cron: '0 22 * * *'  # 6:00 PM EDT (UTC-4) / 5:00 PM EST (UTC-5, Nov-Mar)
+  workflow_dispatch:        # Manual trigger from GitHub Actions UI
+
+jobs:
+  run-review:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run day-in-review pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_SERVICE_ACCOUNT_BASE64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_BASE64 }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          FROM_EMAIL: ${{ vars.FROM_EMAIL }}
+          DAILY_COACH_CONFIGS_FOLDER: ${{ vars.DAILY_COACH_CONFIGS_FOLDER }}
+        run: python main.py --review

@@ -1,0 +1,65 @@
+{
+  "_description": "Weight loss focused — copy this file, rename to yourname.json, fill in your details",
+
+  "folder_id": "",
+  "folder_name": "Health-exports",
+  "workout_folder_id": "",
+  "workout_folder_name": "",
+  "email": "user@example.com",
+
+  "goal_type": "cut",
+  "coaching_style": "supportive",
+  "coaching_focus": "Sustainable fat loss while preserving as much muscle as possible. Caloric deficit through diet, activity through daily movement. Scale trend matters more than single-day numbers.",
+
+  "profile": {
+    "name": "User",
+    "age": 30,
+    "height_ft": 5,
+    "height_in": 6
+  },
+
+  "goals": {
+    "weight_target_lbs": 160,
+    "body_fat_target_pct": null,
+    "weight_cutoff_date": "2026-12-31"
+  },
+
+  "daily_targets": {
+    "protein_g": 150,
+    "calories_rest_day": 1600,
+    "calories_training_day": 1900,
+    "fat_g_min": 50,
+    "sleep_hours": 7.5,
+    "steps": 9000
+  },
+
+  "events": [],
+
+  "compounds": [],
+
+  "bloodwork": [],
+
+  "flags": {
+    "max_daily_deficit_kcal": 750,
+    "protein_red_alert_g": 100,
+    "hr_spike_bpm_above_avg": 7,
+    "max_weekly_weight_loss_lbs": 2.0
+  },
+
+  "metric_cards": [
+    {"data_key": "weight_lbs",                  "label": "Weight",     "emoji": "⚖️", "unit": " lbs", "target_ref": "goals.weight_target_lbs",          "higher_is_better": false, "decimals": 1},
+    {"data_key": "steps",                       "label": "Steps",      "emoji": "👟", "unit": "",     "target_ref": "daily_targets.steps",               "higher_is_better": true,  "decimals": 0},
+    {"data_key": "sleep_hours",                 "label": "Sleep",      "emoji": "😴", "unit": " hrs", "target_ref": "daily_targets.sleep_hours",         "higher_is_better": true,  "decimals": 1},
+    {"data_key": "protein_g",                   "label": "Protein",    "emoji": "🥩", "unit": "g",    "target_ref": "daily_targets.protein_g",           "higher_is_better": true,  "decimals": 0},
+    {"data_key": "calories_consumed",           "label": "Calories",   "emoji": "🔥", "unit": " kcal","target_ref": "daily_targets.calories_rest_day",   "training_day_target_ref": "daily_targets.calories_training_day", "higher_is_better": true, "decimals": 0},
+    {"data_key": "resting_hr",                  "label": "Resting HR", "emoji": "❤️", "unit": " bpm", "higher_is_better": false, "decimals": 0},
+    {"data_key": "active_energy",               "label": "Active Cal", "emoji": "⚡", "unit": " kcal","higher_is_better": true,  "decimals": 0},
+    {"data_key": "walking_running_distance_mi", "label": "Walk / Run", "emoji": "🏃", "unit": " mi",  "higher_is_better": true,  "decimals": 2}
+  ],
+
+  "streaks": [
+    {"metric": "protein_g",   "label": "Protein", "unit": "g",    "target_ref": "daily_targets.protein_g",   "higher_is_better": true},
+    {"metric": "steps",       "label": "Steps",   "unit": "",     "target_ref": "daily_targets.steps",       "higher_is_better": true},
+    {"metric": "sleep_hours", "label": "Sleep",   "unit": " hrs", "target_ref": "daily_targets.sleep_hours", "higher_is_better": true}
+  ]
+}

@@ -1,0 +1,46 @@
+name: Daily Fitness Coaching Brief
+
+on:
+  schedule:
+    - cron: '0 9 * * *'   # 5:00 AM EDT (UTC-4) / change to 0 10 for EST (Nov-Mar)
+  workflow_dispatch:         # Manual trigger from GitHub Actions UI
+
+jobs:
+  run-coach:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore health history cache
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: health-history-${{ github.run_id }}
+          restore-keys: |
+            health-history-
+
+      - name: Run coaching pipeline
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_SERVICE_ACCOUNT_BASE64: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_BASE64 }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          FROM_EMAIL: ${{ vars.FROM_EMAIL }}
+          DAILY_COACH_CONFIGS_FOLDER: ${{ vars.DAILY_COACH_CONFIGS_FOLDER }}
+        run: python main.py
+
+      - name: Save updated health history cache
+        uses: actions/cache@v4
+        with:
+          path: data/
+          key: health-history-${{ github.run_id }}

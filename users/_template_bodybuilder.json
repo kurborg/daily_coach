@@ -1,0 +1,65 @@
+{
+  "_description": "Bodybuilding — bulk or cut cycle. Set goal_type to 'bulk', 'cut', or 'aesthetics'. Copy, rename, fill in your details.",
+
+  "folder_id": "",
+  "folder_name": "Health-exports",
+  "workout_folder_id": "",
+  "workout_folder_name": "Workout-exports",
+  "email": "user@example.com",
+
+  "goal_type": "bulk",
+  "coaching_style": "tough_love",
+  "coaching_focus": "Maximizing muscle growth during a lean bulk. Hit the surplus every single day. Training volume and protein are non-negotiable. Aesthetics drive every decision — no sloppy bulk.",
+
+  "profile": {
+    "name": "User",
+    "age": 25,
+    "height_ft": 5,
+    "height_in": 11
+  },
+
+  "goals": {
+    "weight_target_lbs": 195,
+    "body_fat_target_pct": 12,
+    "weight_cutoff_date": null
+  },
+
+  "daily_targets": {
+    "protein_g": 220,
+    "calories_rest_day": 2800,
+    "calories_training_day": 3200,
+    "fat_g_min": 70,
+    "sleep_hours": 8,
+    "steps": 8000,
+    "workout_minutes": 60
+  },
+
+  "events": [],
+
+  "compounds": [],
+
+  "bloodwork": [],
+
+  "flags": {
+    "protein_red_alert_g": 160,
+    "hr_spike_bpm_above_avg": 7,
+    "max_weekly_weight_loss_lbs": 1.0,
+    "late_training_cutoff_hour": 22
+  },
+
+  "metric_cards": [
+    {"data_key": "weight_lbs",      "label": "Weight",       "emoji": "⚖️", "unit": " lbs", "target_ref": "goals.weight_target_lbs",            "higher_is_better": true,  "decimals": 1},
+    {"data_key": "protein_g",       "label": "Protein",      "emoji": "🥩", "unit": "g",    "target_ref": "daily_targets.protein_g",            "higher_is_better": true,  "decimals": 0},
+    {"data_key": "calories_consumed","label": "Calories",    "emoji": "🔥", "unit": " kcal","target_ref": "daily_targets.calories_rest_day",    "training_day_target_ref": "daily_targets.calories_training_day", "higher_is_better": true, "decimals": 0},
+    {"data_key": "sleep_hours",     "label": "Sleep",        "emoji": "😴", "unit": " hrs", "target_ref": "daily_targets.sleep_hours",          "higher_is_better": true,  "decimals": 1},
+    {"data_key": "workout_minutes", "label": "Workout Time", "emoji": "🏋️", "unit": " min", "target_ref": "daily_targets.workout_minutes",      "higher_is_better": true,  "decimals": 0},
+    {"data_key": "resting_hr",      "label": "Resting HR",   "emoji": "❤️", "unit": " bpm", "higher_is_better": false, "decimals": 0},
+    {"data_key": "steps",           "label": "Steps",        "emoji": "👟", "unit": "",     "target_ref": "daily_targets.steps",               "higher_is_better": true,  "decimals": 0},
+    {"data_key": "hrv",             "label": "HRV",          "emoji": "🧠", "unit": " ms",  "higher_is_better": true,  "decimals": 1}
+  ],
+
+  "streaks": [
+    {"metric": "protein_g",   "label": "Protein", "unit": "g",    "target_ref": "daily_targets.protein_g",   "higher_is_better": true},
+    {"metric": "sleep_hours", "label": "Sleep",   "unit": " hrs", "target_ref": "daily_targets.sleep_hours", "higher_is_better": true}
+  ]
+}
