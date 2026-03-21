@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Daily Coach — Get Started</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* Nav */
+  .site-nav {
+    background: #12121f;
+    border-bottom: 1px solid #2e2e4a;
+    padding: 0 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .site-nav-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+  .site-nav-brand {
+    font-weight: 700;
+    font-size: 15px;
+    color: #6c63ff;
+    padding: 14px 20px 14px 0;
+    text-decoration: none;
+    margin-right: 8px;
+    border-right: 1px solid #2e2e4a;
+  }
+  .site-nav a {
+    color: #8888aa;
+    text-decoration: none;
+    font-size: 14px;
+    padding: 14px 16px;
+    display: inline-block;
+    border-bottom: 2px solid transparent;
+    transition: color .15s, border-color .15s;
+  }
+  .site-nav a:hover { color: #e0e0f0; }
+  .site-nav a.active { color: #e0e0f0; border-bottom-color: #6c63ff; }
+
+  :root {
+    --bg:       #0f0f1a;
+    --surface:  #1a1a2e;
+    --card:     #22223b;
+    --border:   #2e2e4a;
+    --accent:   #6c63ff;
+    --accent2:  #ff6584;
+    --text:     #e0e0f0;
+    --muted:    #8888aa;
+    --green:    #4ecca3;
+    --yellow:   #f5c842;
+    --radius:   10px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    padding: 40px 20px 80px;
+  }
+
+  .container { max-width: 720px; margin: 0 auto; }
+
+  h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+  .subtitle { color: var(--muted); margin-bottom: 40px; font-size: 14px; }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  .section-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+  }
+
+  .row { display: flex; gap: 16px; margin-bottom: 16px; }
+  .row > * { flex: 1; }
+  .row:last-child { margin-bottom: 0; }
+
+  label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  input[type=text], input[type=email], input[type=number], input[type=date], select, textarea {
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 90px; }
+
+  /* Goal type cards */
+  .goal-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .goal-card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    user-select: none;
+  }
+  .goal-card:hover { border-color: var(--accent); }
+  .goal-card.selected { border-color: var(--accent); background: #2a2a50; }
+  .goal-card .icon { font-size: 26px; margin-bottom: 6px; }
+  .goal-card .name { font-weight: 600; font-size: 14px; }
+  .goal-card .desc { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  /* Coaching style cards */
+  .style-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .style-card {
+    background: var(--card);
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    user-select: none;
+    text-align: center;
+  }
+  .style-card:hover { border-color: var(--accent); }
+  .style-card.selected { border-color: var(--accent); background: #2a2a50; }
+  .style-card .icon { font-size: 22px; margin-bottom: 4px; }
+  .style-card .name { font-weight: 600; font-size: 13px; }
+  .style-card .desc { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+  /* Conditional sections */
+  .conditional { display: none; }
+  .conditional.visible { display: block; }
+
+  /* Advanced toggle */
+  .advanced-toggle {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    cursor: pointer;
+    user-select: none;
+    color: var(--muted);
+    font-size: 13px;
+    border-top: 1px solid var(--border);
+    padding-top: 18px;
+  }
+  .advanced-toggle:hover { color: var(--accent); }
+  .advanced-toggle .arrow { transition: transform .2s; font-size: 11px; }
+  .advanced-toggle.open .arrow { transform: rotate(90deg); }
+  .advanced-toggle .tag {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 10px;
+    font-size: 11px;
+    color: var(--yellow);
+    margin-left: auto;
+  }
+  .advanced-fields { display: none; margin-top: 18px; }
+  .advanced-fields.open { display: block; }
+  .advanced-divider {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .advanced-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  /* Events */
+  .event-list { display: flex; flex-direction: column; gap: 10px; }
+  .event-row {
+    display: grid;
+    grid-template-columns: 50px 1fr 1fr 130px 34px;
+    gap: 8px;
+    align-items: end;
+  }
+  .emoji-input { text-align: center; font-size: 18px; }
+  .btn-remove {
+    background: #3a1a2e;
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    height: 36px;
+    width: 34px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .btn-remove:hover { background: #4a1a3a; }
+  .btn-add {
+    margin-top: 12px;
+    background: var(--card);
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    width: 100%;
+    transition: border-color .15s, color .15s;
+  }
+  .btn-add:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Generate button */
+  .generate-btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 700;
+    border: none;
+    border-radius: var(--radius);
+    cursor: pointer;
+    letter-spacing: .03em;
+    transition: opacity .15s;
+    margin-top: 8px;
+  }
+  .generate-btn:hover { opacity: .88; }
+
+  /* Output */
+  .output-section {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--green);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-top: 24px;
+  }
+  .output-section.visible { display: block; }
+  .output-section pre {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    font-size: 12px;
+    overflow-x: auto;
+    max-height: 360px;
+    color: #c0c0e0;
+  }
+  .output-actions { display: flex; gap: 12px; margin-top: 14px; }
+  .btn-download {
+    flex: 1; padding: 12px; background: var(--green); color: #0f0f1a;
+    font-weight: 700; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;
+  }
+  .btn-copy {
+    flex: 1; padding: 12px; background: var(--card); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; cursor: pointer; font-size: 14px;
+  }
+  .btn-copy:hover, .btn-download:hover { opacity: .88; }
+
+  .hint { font-size: 12px; color: var(--muted); margin-top: 5px; }
+  .required { color: var(--accent2); }
+  .field-note { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* Setup guide */
+  .guide-section {
+    background: #1a2a1a;
+    border: 1px solid #2e4a2e;
+    border-radius: var(--radius);
+    padding: 0;
+    margin-bottom: 24px;
+    overflow: hidden;
+  }
+  .guide-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 18px 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+  .guide-header:hover { background: rgba(78,204,163,.06); }
+  .guide-title { font-weight: 600; font-size: 14px; color: var(--green); flex: 1; }
+  .guide-subtitle { font-size: 12px; color: var(--muted); }
+  .guide-arrow { color: var(--muted); font-size: 11px; transition: transform .2s; }
+  .guide-arrow.open { transform: rotate(90deg); }
+  .guide-body { display: none; padding: 0 24px 24px; }
+  .guide-body.open { display: block; }
+  .guide-steps { list-style: none; padding: 0; margin: 0; }
+  .guide-steps li {
+    display: flex;
+    gap: 16px;
+    padding: 14px 0;
+    border-bottom: 1px solid #2e4a2e;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+  .guide-steps li:last-child { border-bottom: none; }
+  .guide-step-num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: #2e4a2e;
+    color: var(--green);
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 1px;
+  }
+  .guide-steps code {
+    background: #223322;
+    border: 1px solid #2e4a2e;
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-family: 'SF Mono', 'Consolas', monospace;
+    font-size: 12px;
+    color: var(--green);
+    word-break: break-all;
+  }
+  .guide-steps strong { color: var(--text); }
+
+  /* Next steps panel */
+  .next-steps {
+    margin-top: 20px;
+    background: #1a1a38;
+    border: 1px solid #2e2e60;
+    border-radius: 8px;
+    padding: 20px;
+  }
+  .next-steps-title { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin-bottom: 14px; }
+  .next-steps ol { padding-left: 18px; margin: 0; }
+  .next-steps li { font-size: 13px; color: var(--text); margin-bottom: 8px; line-height: 1.6; }
+  .next-steps li:last-child { margin-bottom: 0; }
+  .next-steps a { color: var(--accent); text-decoration: none; }
+  .next-steps a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<nav class="site-nav">
+  <div class="site-nav-inner">
+    <a href="index.html" class="site-nav-brand">Daily Coach</a>
+    <a href="index.html">About</a>
+    <a href="getting-started.html" class="active">Get Started</a>
+  </div>
+</nav>
+
+<div class="container">
+  <h1>Daily Coach Setup</h1>
+  <p class="subtitle">Answer what you know — leave the rest blank. You can always update your config later.</p>
+
+  <!-- 0. Setup guide -->
+  <div class="guide-section">
+    <div class="guide-header" onclick="toggleGuide()">
+      <span style="font-size:20px;">📱</span>
+      <div style="flex:1;">
+        <div class="guide-title">Before you start — set up Health Auto Export</div>
+        <div class="guide-subtitle">Takes about 5 minutes. Click to expand the guide.</div>
+      </div>
+      <span class="guide-arrow" id="guide-arrow">▶</span>
+    </div>
+    <div class="guide-body" id="guide-body">
+      <ul class="guide-steps">
+        <li>
+          <div class="guide-step-num">1</div>
+          <div>
+            <strong>Install Health Auto Export on your iPhone.</strong><br />
+            Search for "Health Auto Export" in the App Store (by Lybron Sobers). It's free with optional paid tier.
+          </div>
+        </li>
+        <li>
+          <div class="guide-step-num">2</div>
+          <div>
+            <strong>Configure it to export to Google Drive.</strong><br />
+            Open the app → Automations → Create New → choose <em>Google Drive</em> as the destination. Sign in with your Google account.
+          </div>
+        </li>
+        <li>
+          <div class="guide-step-num">3</div>
+          <div>
+            <strong>Name your export folders using this exact convention:</strong><br />
+            <code>health-exports-YOURNAME</code> &nbsp;and&nbsp; <code>workout-exports-YOURNAME</code><br />
+            <span style="color:var(--muted);font-size:12px;margin-top:4px;display:block;">For example: <code>health-exports-alex</code> and <code>workout-exports-alex</code>. These names must match what you enter in the form below.</span>
+          </div>
+        </li>
+        <li>
+          <div class="guide-step-num">4</div>
+          <div>
+            <strong>Share both folders with the coaching service account.</strong><br />
+            In Google Drive → right-click your folder → Share → add this email with <em>Viewer</em> access:<br />
+            <code>fitness-coach-reader@fitness-coach-490102.iam.gserviceaccount.com</code>
+          </div>
+        </li>
+        <li>
+          <div class="guide-step-num">5</div>
+          <div>
+            <strong>Set the export to run automatically.</strong><br />
+            In Health Auto Export → set the automation schedule to <em>Daily</em>. Make sure "Include last 7 days" is enabled so historical data is always present.
+          </div>
+        </li>
+        <li>
+          <div class="guide-step-num">6</div>
+          <div>
+            <strong>Fill out this form, download your config, and send it to get started.</strong><br />
+            Once you've generated your config below, email it to <a href="mailto:kurborg@gmail.com">kurborg@gmail.com</a> and your daily coaching emails will begin the next morning.
+          </div>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- 1. Profile -->
+  <div class="section">
+    <div class="section-title">About You</div>
+    <div class="row">
+      <div>
+        <label>First name <span class="required">*</span></label>
+        <input type="text" id="name" placeholder="Alex" />
+      </div>
+      <div>
+        <label>Email for daily coaching <span class="required">*</span></label>
+        <input type="email" id="email" placeholder="you@example.com" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Age <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+        <input type="number" id="age" min="16" max="99" placeholder="28" />
+      </div>
+      <div>
+        <label>Height — feet</label>
+        <input type="number" id="height_ft" min="4" max="7" placeholder="5" />
+      </div>
+      <div>
+        <label>Height — inches</label>
+        <input type="number" id="height_in" min="0" max="11" placeholder="10" />
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Goal type -->
+  <div class="section">
+    <div class="section-title">What are you training for?</div>
+    <div class="goal-cards">
+      <div class="goal-card" data-goal="cut" onclick="selectGoal('cut')">
+        <div class="icon">🔥</div>
+        <div class="name">Lose weight</div>
+        <div class="desc">Drop body fat, keep muscle. Scale trend over time.</div>
+      </div>
+      <div class="goal-card" data-goal="bulk" onclick="selectGoal('bulk')">
+        <div class="icon">💪</div>
+        <div class="name">Build muscle</div>
+        <div class="desc">Lean bulk or mass phase. Protein and training volume drive everything.</div>
+      </div>
+      <div class="goal-card" data-goal="performance" onclick="selectGoal('performance')">
+        <div class="icon">🏁</div>
+        <div class="name">Train for a race or event</div>
+        <div class="desc">Triathlon, Spartan, marathon, Hyrox — performance is the priority.</div>
+      </div>
+      <div class="goal-card" data-goal="active" onclick="selectGoal('active')">
+        <div class="icon">🌿</div>
+        <div class="name">Just stay healthy and active</div>
+        <div class="desc">More movement, better sleep, eat well — no extreme targets.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Coaching style -->
+  <div class="section">
+    <div class="section-title">How should your coach talk to you?</div>
+    <div class="style-cards">
+      <div class="style-card" data-style="tough_love" onclick="selectStyle('tough_love')">
+        <div class="icon">🔱</div>
+        <div class="name">Tough love</div>
+        <div class="desc">Direct, no excuses. Called out when you slip.</div>
+      </div>
+      <div class="style-card" data-style="supportive" onclick="selectStyle('supportive')">
+        <div class="icon">🤝</div>
+        <div class="name">Supportive</div>
+        <div class="desc">Encouraging. Progress over perfection.</div>
+      </div>
+      <div class="style-card" data-style="analytical" onclick="selectStyle('analytical')">
+        <div class="icon">📊</div>
+        <div class="name">Analytical</div>
+        <div class="desc">Data-first. Numbers and trends over feelings.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4. Goals (conditional on goal type) -->
+  <div class="section conditional" id="goals-section">
+    <div class="section-title">Your goal</div>
+    <div class="row">
+      <div>
+        <label>Target weight (lbs)</label>
+        <input type="number" id="weight_target_lbs" step="0.5" placeholder="175" />
+        <p class="field-note">What weight are you aiming for?</p>
+      </div>
+      <div>
+        <label>Deadline <span style="color:var(--muted);font-weight:400;">(optional)</span></label>
+        <input type="date" id="weight_cutoff_date" />
+        <p class="field-note">Give yourself a date to work toward.</p>
+      </div>
+    </div>
+
+    <!-- Advanced: body fat % -->
+    <div class="advanced-toggle" id="goals-adv-toggle" onclick="toggleAdvanced('goals')">
+      <span class="arrow">▶</span>
+      Advanced goal settings
+      <span class="tag">optional</span>
+    </div>
+    <div class="advanced-fields" id="goals-adv-fields">
+      <div class="advanced-divider">Body composition</div>
+      <div class="row">
+        <div>
+          <label>Target body fat %</label>
+          <input type="number" id="body_fat_target_pct" step="0.5" placeholder="15" />
+          <p class="field-note">Only fill this if you track body fat. Leave blank otherwise.</p>
+        </div>
+        <div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Daily targets -->
+  <div class="section">
+    <div class="section-title">Daily targets</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:18px;">Fill in what you know. The coach will set reasonable defaults for anything you leave blank.</p>
+
+    <!-- Basic fields -->
+    <div class="row">
+      <div>
+        <label>Sleep goal (hours/night)</label>
+        <input type="number" id="sleep_hours" step="0.5" placeholder="7.5" />
+      </div>
+      <div>
+        <label>Daily steps goal</label>
+        <input type="number" id="steps" placeholder="8000" />
+      </div>
+    </div>
+    <div class="row">
+      <div>
+        <label>Daily calorie target</label>
+        <input type="number" id="calories_rest_day" placeholder="2000" />
+        <p class="field-note">Your target on a normal day.</p>
+      </div>
+      <div></div>
+    </div>
+
+    <!-- Advanced toggle -->
+    <div class="advanced-toggle" id="targets-adv-toggle" onclick="toggleAdvanced('targets')">
+      <span class="arrow">▶</span>
+      I track macros and fitness metrics
+      <span class="tag">optional</span>
+    </div>
+    <div class="advanced-fields" id="targets-adv-fields">
+      <div class="advanced-divider">Nutrition</div>
+      <div class="row">
+        <div>
+          <label>Protein goal (g/day)</label>
+          <input type="number" id="protein_g" placeholder="150" />
+        </div>
+        <div>
+          <label>Training day calories</label>
+          <input type="number" id="calories_training_day" placeholder="2400" />
+          <p class="field-note">Higher target on workout days.</p>
+        </div>
+        <div>
+          <label>Minimum fat (g/day)</label>
+          <input type="number" id="fat_g_min" placeholder="55" />
+        </div>
+      </div>
+
+      <div class="advanced-divider">Training</div>
+      <div class="row">
+        <div>
+          <label>Cardio distance (mi/day)</label>
+          <input type="number" id="cardio_mi" step="0.1" placeholder="3" />
+        </div>
+        <div>
+          <label>Workout time (min/day)</label>
+          <input type="number" id="workout_minutes" placeholder="45" />
+        </div>
+        <div></div>
+      </div>
+
+      <div class="advanced-divider">Recovery metrics</div>
+      <div class="row">
+        <div>
+          <label>HRV minimum (ms)</label>
+          <input type="number" id="hrv_min" placeholder="50" />
+          <p class="field-note">Heart Rate Variability — from Apple Watch or Oura.</p>
+        </div>
+        <div>
+          <label>Resting HR max (bpm)</label>
+          <input type="number" id="resting_hr_max" placeholder="65" />
+          <p class="field-note">Alert when resting heart rate exceeds this.</p>
+        </div>
+        <div></div>
+      </div>
+
+      <div class="advanced-divider">Coaching focus</div>
+      <div>
+        <label>What matters most to you? <span style="font-weight:400;color:var(--muted);">(your coach reads this every day)</span></label>
+        <textarea id="coaching_focus" placeholder="Describe your priorities — what should your coach filter every decision through?"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. Events -->
+  <div class="section">
+    <div class="section-title">Upcoming events <span style="color:var(--muted);font-size:11px;font-weight:400;text-transform:none;letter-spacing:0;">— optional</span></div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Add any races, competitions, or dates you're training toward. Your coach will count down to them.</p>
+    <div class="event-list" id="event-list"></div>
+    <button type="button" class="btn-add" onclick="addEvent()">+ Add an event</button>
+  </div>
+
+  <!-- 7. Google Drive -->
+  <div class="section">
+    <div class="section-title">Google Drive folders</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">The exact folder names in your Google Drive where Health Auto Export uploads your data. Auto-filled from your name above — change if needed.</p>
+    <div class="row">
+      <div>
+        <label>Health export folder name</label>
+        <input type="text" id="folder_name" placeholder="health-exports-yourname" />
+      </div>
+      <div>
+        <label>Workout export folder name <span style="color:var(--muted)">(optional)</span></label>
+        <input type="text" id="workout_folder_name" placeholder="workout-exports-yourname" />
+      </div>
+    </div>
+  </div>
+
+  <button class="generate-btn" onclick="generate()">Generate my config &rarr;</button>
+
+  <!-- Output -->
+  <div class="output-section" id="output-section">
+    <div class="section-title" style="color:var(--green);">Config ready</div>
+    <p style="margin-bottom:14px;font-size:13px;color:var(--muted);">Drop this file into the <code>users/</code> folder as <strong id="filename-label" style="color:var(--text);"></strong></p>
+    <pre id="json-preview"></pre>
+    <div class="output-actions">
+      <button class="btn-download" onclick="download()">Download JSON</button>
+      <button class="btn-copy" onclick="copyJson()">Copy to clipboard</button>
+    </div>
+    <div class="next-steps">
+      <div class="next-steps-title">What to do next</div>
+      <ol>
+        <li>Make sure your two Google Drive folders are set up and named exactly as shown in the config (<strong id="ns-folder-label" style="color:var(--green)"></strong>).</li>
+        <li>Share both folders with the service account: <code style="font-family:monospace;font-size:12px;background:#22223b;padding:2px 6px;border-radius:4px;">fitness-coach-reader@fitness-coach-490102.iam.gserviceaccount.com</code></li>
+        <li>Download your config file and email it to <a href="mailto:kurborg@gmail.com?subject=Daily Coach Config&body=Hi! I've set up my Google Drive folders and attached my config.json. Ready to get started.">kurborg@gmail.com</a> — your daily coaching emails will begin the next morning.</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+let selectedGoal = null;
+let selectedStyle = null;
+let generatedJson = '';
+let generatedFilename = '';
+
+function toggleGuide() {
+  const body  = document.getElementById('guide-body');
+  const arrow = document.getElementById('guide-arrow');
+  body.classList.toggle('open');
+  arrow.classList.toggle('open');
+}
+
+// Auto-fill folder names from the name field
+document.addEventListener('DOMContentLoaded', function() {
+  const nameInput = document.getElementById('name');
+  const folderInput = document.getElementById('folder_name');
+  const workoutInput = document.getElementById('workout_folder_name');
+
+  nameInput.addEventListener('input', function() {
+    const slug = this.value.trim().toLowerCase().replace(/\s+/g, '-');
+    if (slug) {
+      folderInput.value   = 'health-exports-'  + slug;
+      workoutInput.value  = 'workout-exports-' + slug;
+    } else {
+      folderInput.value   = '';
+      workoutInput.value  = '';
+    }
+  });
+});
+
+const COACHING_FOCUS = {
+  cut:         'Sustainable fat loss while preserving as much muscle as possible. Scale trend over single-day numbers. Deficit and protein are the two non-negotiables.',
+  bulk:        'Maximizing muscle growth during a lean bulk. Hit the surplus every single day. Training volume and protein are non-negotiable. No sloppy bulk.',
+  performance: 'Race performance above everything. Nutrition and recovery exist to support training output. Every coaching decision should answer: does this make me faster and stronger on race day?',
+  active:      'Building sustainable healthy habits. Consistency over perfection — more movement, better sleep, eating well most of the time.',
+};
+
+const DEFAULTS = {
+  cut:         { protein_g: 150, calories_rest_day: 1600, calories_training_day: 1900, fat_g_min: 50, sleep_hours: 7.5, steps: 9000 },
+  bulk:        { protein_g: 220, calories_rest_day: 2800, calories_training_day: 3200, fat_g_min: 70, sleep_hours: 8,   steps: 8000 },
+  performance: { protein_g: 170, calories_rest_day: 2400, calories_training_day: 3000, fat_g_min: 60, sleep_hours: 8,   steps: 10000, cardio_mi: 3, workout_minutes: 60, hrv_min: 50, resting_hr_max: 60 },
+  active:      { protein_g: 120, calories_rest_day: 1800, sleep_hours: 7.5, steps: 8000 },
+};
+
+const FLAGS = {
+  cut:         { max_daily_deficit_kcal: 750,  protein_red_alert_g: 100, hr_spike_bpm_above_avg: 7, max_weekly_weight_loss_lbs: 2.0 },
+  bulk:        { protein_red_alert_g: 160,      hr_spike_bpm_above_avg: 7, max_weekly_weight_loss_lbs: 1.0, late_training_cutoff_hour: 22 },
+  performance: { max_daily_deficit_kcal: 600,  protein_red_alert_g: 120, hr_spike_bpm_above_avg: 5, max_weekly_weight_loss_lbs: 1.5, late_training_cutoff_hour: 22 },
+  active:      { protein_red_alert_g: 80,       hr_spike_bpm_above_avg: 7, max_weekly_weight_loss_lbs: 2.0 },
+};
+
+const METRIC_CARDS = {
+  cut: [
+    {"data_key":"weight_lbs","label":"Weight","emoji":"⚖️","unit":" lbs","target_ref":"goals.weight_target_lbs","higher_is_better":false,"decimals":1},
+    {"data_key":"steps","label":"Steps","emoji":"👟","unit":"","target_ref":"daily_targets.steps","higher_is_better":true,"decimals":0},
+    {"data_key":"sleep_hours","label":"Sleep","emoji":"😴","unit":" hrs","target_ref":"daily_targets.sleep_hours","higher_is_better":true,"decimals":1},
+    {"data_key":"protein_g","label":"Protein","emoji":"🥩","unit":"g","target_ref":"daily_targets.protein_g","higher_is_better":true,"decimals":0},
+    {"data_key":"calories_consumed","label":"Calories","emoji":"🔥","unit":" kcal","target_ref":"daily_targets.calories_rest_day","training_day_target_ref":"daily_targets.calories_training_day","higher_is_better":true,"decimals":0},
+    {"data_key":"resting_hr","label":"Resting HR","emoji":"❤️","unit":" bpm","higher_is_better":false,"decimals":0},
+    {"data_key":"active_energy","label":"Active Cal","emoji":"⚡","unit":" kcal","higher_is_better":true,"decimals":0},
+    {"data_key":"walking_running_distance_mi","label":"Walk / Run","emoji":"🏃","unit":" mi","higher_is_better":true,"decimals":2}
+  ],
+  bulk: [
+    {"data_key":"weight_lbs","label":"Weight","emoji":"⚖️","unit":" lbs","target_ref":"goals.weight_target_lbs","higher_is_better":true,"decimals":1},
+    {"data_key":"protein_g","label":"Protein","emoji":"🥩","unit":"g","target_ref":"daily_targets.protein_g","higher_is_better":true,"decimals":0},
+    {"data_key":"calories_consumed","label":"Calories","emoji":"🔥","unit":" kcal","target_ref":"daily_targets.calories_rest_day","training_day_target_ref":"daily_targets.calories_training_day","higher_is_better":true,"decimals":0},
+    {"data_key":"sleep_hours","label":"Sleep","emoji":"😴","unit":" hrs","target_ref":"daily_targets.sleep_hours","higher_is_better":true,"decimals":1},
+    {"data_key":"workout_minutes","label":"Workout Time","emoji":"🏋️","unit":" min","target_ref":"daily_targets.workout_minutes","higher_is_better":true,"decimals":0},
+    {"data_key":"resting_hr","label":"Resting HR","emoji":"❤️","unit":" bpm","higher_is_better":false,"decimals":0},
+    {"data_key":"steps","label":"Steps","emoji":"👟","unit":"","target_ref":"daily_targets.steps","higher_is_better":true,"decimals":0},
+    {"data_key":"hrv","label":"HRV","emoji":"🧠","unit":" ms","higher_is_better":true,"decimals":1}
+  ],
+  performance: [
+    {"data_key":"weight_lbs","label":"Weight","emoji":"⚖️","unit":" lbs","higher_is_better":false,"decimals":1},
+    {"data_key":"resting_hr","label":"Resting HR","emoji":"❤️","unit":" bpm","target_ref":"daily_targets.resting_hr_max","higher_is_better":false,"decimals":0},
+    {"data_key":"hrv","label":"HRV","emoji":"🧠","unit":" ms","target_ref":"daily_targets.hrv_min","higher_is_better":true,"decimals":1},
+    {"data_key":"sleep_hours","label":"Sleep","emoji":"😴","unit":" hrs","target_ref":"daily_targets.sleep_hours","higher_is_better":true,"decimals":1},
+    {"data_key":"protein_g","label":"Protein","emoji":"🥩","unit":"g","target_ref":"daily_targets.protein_g","higher_is_better":true,"decimals":0},
+    {"data_key":"calories_consumed","label":"Calories","emoji":"🔥","unit":" kcal","target_ref":"daily_targets.calories_rest_day","training_day_target_ref":"daily_targets.calories_training_day","higher_is_better":true,"decimals":0},
+    {"data_key":"workout_minutes","label":"Workout Time","emoji":"🏋️","unit":" min","target_ref":"daily_targets.workout_minutes","higher_is_better":true,"decimals":0},
+    {"data_key":"total_cardio_mi","label":"Cardio","emoji":"🎽","unit":" mi","target_ref":"daily_targets.cardio_mi","higher_is_better":true,"decimals":2},
+    {"data_key":"walking_running_distance_mi","label":"Walk / Run","emoji":"🏃","unit":" mi","higher_is_better":true,"decimals":2},
+    {"data_key":"cycling_distance_mi","label":"Cycling","emoji":"🚴","unit":" mi","higher_is_better":true,"decimals":2},
+    {"data_key":"swimming_distance_mi","label":"Swimming","emoji":"🏊","unit":" mi","higher_is_better":true,"decimals":2},
+    {"data_key":"steps","label":"Steps","emoji":"👟","unit":"","target_ref":"daily_targets.steps","higher_is_better":true,"decimals":0}
+  ],
+  active: [
+    {"data_key":"weight_lbs","label":"Weight","emoji":"⚖️","unit":" lbs","higher_is_better":false,"decimals":1},
+    {"data_key":"steps","label":"Steps","emoji":"👟","unit":"","target_ref":"daily_targets.steps","higher_is_better":true,"decimals":0},
+    {"data_key":"sleep_hours","label":"Sleep","emoji":"😴","unit":" hrs","target_ref":"daily_targets.sleep_hours","higher_is_better":true,"decimals":1},
+    {"data_key":"protein_g","label":"Protein","emoji":"🥩","unit":"g","target_ref":"daily_targets.protein_g","higher_is_better":true,"decimals":0},
+    {"data_key":"calories_consumed","label":"Calories","emoji":"🔥","unit":" kcal","target_ref":"daily_targets.calories_rest_day","higher_is_better":true,"decimals":0},
+    {"data_key":"resting_hr","label":"Resting HR","emoji":"❤️","unit":" bpm","higher_is_better":false,"decimals":0},
+    {"data_key":"walking_running_distance_mi","label":"Walk / Run","emoji":"🏃","unit":" mi","higher_is_better":true,"decimals":2}
+  ],
+};
+
+const STREAKS = {
+  cut:         [{"metric":"protein_g","label":"Protein","unit":"g","target_ref":"daily_targets.protein_g","higher_is_better":true},{"metric":"steps","label":"Steps","unit":"","target_ref":"daily_targets.steps","higher_is_better":true},{"metric":"sleep_hours","label":"Sleep","unit":" hrs","target_ref":"daily_targets.sleep_hours","higher_is_better":true}],
+  bulk:        [{"metric":"protein_g","label":"Protein","unit":"g","target_ref":"daily_targets.protein_g","higher_is_better":true},{"metric":"sleep_hours","label":"Sleep","unit":" hrs","target_ref":"daily_targets.sleep_hours","higher_is_better":true}],
+  performance: [{"metric":"protein_g","label":"Protein","unit":"g","target_ref":"daily_targets.protein_g","higher_is_better":true},{"metric":"sleep_hours","label":"Sleep","unit":" hrs","target_ref":"daily_targets.sleep_hours","higher_is_better":true},{"metric":"steps","label":"Steps","unit":"","target_ref":"daily_targets.steps","higher_is_better":true}],
+  active:      [{"metric":"steps","label":"Steps","unit":"","target_ref":"daily_targets.steps","higher_is_better":true},{"metric":"sleep_hours","label":"Sleep","unit":" hrs","target_ref":"daily_targets.sleep_hours","higher_is_better":true}],
+};
+
+// Advanced toggle
+function toggleAdvanced(section) {
+  const toggle = document.getElementById(section + '-adv-toggle');
+  const fields  = document.getElementById(section + '-adv-fields');
+  toggle.classList.toggle('open');
+  fields.classList.toggle('open');
+}
+
+function selectGoal(goal) {
+  selectedGoal = goal;
+  document.querySelectorAll('.goal-card').forEach(c => c.classList.toggle('selected', c.dataset.goal === goal));
+
+  const sec = document.getElementById('goals-section');
+  sec.classList.toggle('visible', goal === 'cut' || goal === 'bulk');
+
+  // fill placeholder defaults
+  const d = DEFAULTS[goal] || {};
+  ['protein_g','calories_rest_day','calories_training_day','fat_g_min','sleep_hours','steps','cardio_mi','workout_minutes','hrv_min','resting_hr_max'].forEach(k => {
+    const el = document.getElementById(k);
+    if (el && d[k] != null) el.placeholder = d[k];
+  });
+
+  // fill coaching focus if user hasn't customized it
+  const cf = document.getElementById('coaching_focus');
+  if (cf && !cf._userEdited) cf.value = COACHING_FOCUS[goal] || '';
+}
+
+function selectStyle(style) {
+  selectedStyle = style;
+  document.querySelectorAll('.style-card').forEach(c => c.classList.toggle('selected', c.dataset.style === style));
+}
+
+document.getElementById('coaching_focus').addEventListener('input', function() {
+  this._userEdited = true;
+});
+
+// Events
+let eventCount = 0;
+function addEvent() {
+  const list = document.getElementById('event-list');
+  const id = eventCount++;
+  const div = document.createElement('div');
+  div.className = 'event-row';
+  div.id = 'event-' + id;
+  div.innerHTML = `
+    <div>
+      <label>Emoji</label>
+      <input type="text" class="emoji-input" id="ev-emoji-${id}" placeholder="🏁" maxlength="2" />
+    </div>
+    <div>
+      <label>Event name</label>
+      <input type="text" id="ev-name-${id}" placeholder="Spartan Race" />
+    </div>
+    <div>
+      <label>Short label</label>
+      <input type="text" id="ev-short-${id}" placeholder="Spartan" />
+    </div>
+    <div>
+      <label>Date</label>
+      <input type="date" id="ev-date-${id}" />
+    </div>
+    <button type="button" class="btn-remove" onclick="removeEvent(${id})" title="Remove">✕</button>
+  `;
+  list.appendChild(div);
+}
+
+function removeEvent(id) {
+  document.getElementById('event-' + id).remove();
+}
+
+function getEvents() {
+  return Array.from(document.querySelectorAll('.event-row')).map(row => {
+    const id = row.id.replace('event-', '');
+    const name = document.getElementById('ev-name-' + id)?.value.trim();
+    if (!name) return null;
+    return {
+      name,
+      short: document.getElementById('ev-short-' + id)?.value.trim() || name,
+      emoji: document.getElementById('ev-emoji-' + id)?.value.trim() || '🏁',
+      date:  document.getElementById('ev-date-' + id)?.value || null,
+    };
+  }).filter(Boolean);
+}
+
+function numOrNull(id) {
+  const v = document.getElementById(id)?.value;
+  if (!v || v.trim() === '') return null;
+  const n = parseFloat(v);
+  return isNaN(n) ? null : n;
+}
+
+function strOrDefault(id, fallback) {
+  return document.getElementById(id)?.value.trim() || fallback;
+}
+
+function generate() {
+  const name  = document.getElementById('name').value.trim();
+  const email = document.getElementById('email').value.trim();
+
+  if (!name)          { alert('Please enter your name.');             return; }
+  if (!email)         { alert('Please enter your email.');            return; }
+  if (!selectedGoal)  { alert('Please select your primary goal.');    return; }
+  if (!selectedStyle) { alert('Please select a coaching style.');     return; }
+
+  const goal = selectedGoal;
+  const d = DEFAULTS[goal] || {};
+
+  // Build daily_targets — only include fields that are non-null
+  const daily_targets = {};
+  const pick = (key, useDefault) => {
+    const v = numOrNull(key);
+    if (v != null) return v;
+    return useDefault ? (d[key] ?? null) : null;
+  };
+
+  // Basic fields always included with defaults
+  const sleep = pick('sleep_hours', true);
+  const steps = pick('steps', true);
+  const cal_rest = pick('calories_rest_day', true);
+  if (sleep    != null) daily_targets.sleep_hours        = sleep;
+  if (steps    != null) daily_targets.steps              = steps;
+  if (cal_rest != null) daily_targets.calories_rest_day  = cal_rest;
+
+  // Advanced fields — only include if user filled them in
+  const protein   = pick('protein_g', false);
+  const cal_train = pick('calories_training_day', false);
+  const fat       = pick('fat_g_min', false);
+  const cardio    = pick('cardio_mi', false);
+  const workout   = pick('workout_minutes', false);
+  const hrv       = pick('hrv_min', false);
+  const rhr       = pick('resting_hr_max', false);
+  if (protein   != null) daily_targets.protein_g            = protein;
+  if (cal_train != null) daily_targets.calories_training_day = cal_train;
+  if (fat       != null) daily_targets.fat_g_min             = fat;
+  if (cardio    != null) daily_targets.cardio_mi             = cardio;
+  if (workout   != null) daily_targets.workout_minutes       = workout;
+  if (hrv       != null) daily_targets.hrv_min               = hrv;
+  if (rhr       != null) daily_targets.resting_hr_max        = rhr;
+
+  const goals = {
+    weight_target_lbs:   numOrNull('weight_target_lbs'),
+    body_fat_target_pct: numOrNull('body_fat_target_pct'),
+    weight_cutoff_date:  document.getElementById('weight_cutoff_date')?.value || null,
+  };
+
+  const cf = document.getElementById('coaching_focus')?.value.trim();
+  const coaching_focus = cf || COACHING_FOCUS[goal];
+
+  const profile = { name };
+  const age = numOrNull('age');
+  const hft = numOrNull('height_ft');
+  const hin = numOrNull('height_in');
+  if (age != null) profile.age        = age;
+  if (hft != null) profile.height_ft  = hft;
+  if (hin != null) profile.height_in  = hin;
+
+  const config = {
+    folder_id: "",
+    folder_name: strOrDefault('folder_name', 'Health-exports'),
+    workout_folder_id: "",
+    workout_folder_name: strOrDefault('workout_folder_name', ''),
+    email,
+    profile,
+    goal_type: goal,
+    coaching_style: selectedStyle,
+    coaching_focus,
+    goals,
+    daily_targets,
+    events:     getEvents(),
+    compounds:  [],
+    bloodwork:  [],
+    flags:      FLAGS[goal],
+    metric_cards: METRIC_CARDS[goal],
+    streaks:    STREAKS[goal],
+  };
+
+  generatedJson = JSON.stringify(config, null, 2);
+  generatedFilename = name.toLowerCase().replace(/\s+/g, '_') + '.json';
+
+  document.getElementById('json-preview').textContent = generatedJson;
+  document.getElementById('filename-label').textContent = generatedFilename;
+
+  // Populate next-steps folder label
+  const folderLabel = [config.folder_name, config.workout_folder_name].filter(Boolean).join(' + ');
+  const nsEl = document.getElementById('ns-folder-label');
+  if (nsEl) nsEl.textContent = folderLabel;
+
+  const out = document.getElementById('output-section');
+  out.classList.add('visible');
+  out.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function download() {
+  const blob = new Blob([generatedJson], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = generatedFilename;
+  a.click();
+}
+
+function copyJson() {
+  navigator.clipboard.writeText(generatedJson).then(() => {
+    const btn = document.querySelector('.btn-copy');
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
+  });
+}
+</script>
+</body>
+</html>
