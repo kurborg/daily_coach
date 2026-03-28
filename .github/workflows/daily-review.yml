@@ -1,9 +1,7 @@
 name: Evening Day-in-Review
 
 on:
-  schedule:
-    - cron: '0 22 * * *'  # 6:00 PM EDT (UTC-4) / 5:00 PM EST (UTC-5, Nov-Mar)
-  workflow_dispatch:        # Manual trigger from GitHub Actions UI
+  workflow_dispatch:         # Manual trigger from GitHub Actions UI
 
 jobs:
   run-review:

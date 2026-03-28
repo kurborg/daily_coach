@@ -1,8 +1,6 @@
 name: Daily Fitness Coaching Brief
 
 on:
-  schedule:
-    - cron: '0 9 * * *'   # 5:00 AM EDT (UTC-4) / change to 0 10 for EST (Nov-Mar)
   workflow_dispatch:         # Manual trigger from GitHub Actions UI
 
 jobs:
